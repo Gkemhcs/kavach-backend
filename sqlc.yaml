@@ -1,0 +1,10 @@
+version: "1"
+
+packages:
+  - name: "userdb"
+    path: "internal/auth/gen"
+    queries: "internal/auth/users.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true
