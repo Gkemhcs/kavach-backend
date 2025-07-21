@@ -171,7 +171,11 @@ func (g *GitHubProvider) PollDeviceToken(ctx context.Context, deviceCode string)
 	data.Set("device_code", deviceCode)
 	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 
+	start := time.Now()
 	for {
+		if time.Since(start) > 2*time.Minute {
+			return nil, fmt.Errorf("device_authorization_timeout")
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://github.com/login/oauth/access_token", strings.NewReader(data.Encode()))
 		if err != nil {
 			return nil, err

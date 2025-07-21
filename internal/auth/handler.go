@@ -3,6 +3,8 @@ package auth
 import (
 	"net/http"
 
+	apperrors "github.com/Gkemhcs/kavach-backend/internal/errors"
+	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -28,10 +30,9 @@ func RegisterAuthRoutes(handler *AuthHandler, routerGroup *gin.RouterGroup) {
 		authGroup.GET("/github/callback", handler.loginCallback)
 		authGroup.POST("/device/code", handler.DeviceCode)
 		authGroup.POST("/device/token", handler.DeviceToken)
+		authGroup.POST("/refresh", handler.RefreshToken)
 	}
 }
-
-
 
 func (h *AuthHandler) DeviceCode(c *gin.Context) {
 	deviceResp, err := h.service.StartDeviceFlow(c.Request.Context())
@@ -75,7 +76,7 @@ func (h *AuthHandler) loginCallback(c *gin.Context) {
 		return
 	}
 
-	userInfo, token, err := h.service.HandleCallback(c.Request.Context(), code)
+	userInfo, token, refreshToken, err := h.service.HandleCallback(c.Request.Context(), code)
 	if err != nil {
 		h.logger.Errorf("OAuth callback error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "OAuth failed"})
@@ -85,8 +86,40 @@ func (h *AuthHandler) loginCallback(c *gin.Context) {
 	h.logger.Infof("GitHub User Info: %+v", userInfo)
 	h.logger.Info(token)
 	c.JSON(http.StatusOK, gin.H{
-		"message": "OAuth successful",
-		"user":    userInfo,
-		"token":   token,
+		"message":       "OAuth successful",
+		"user":          userInfo,
+		"token":         token,
+		"refresh_token": refreshToken,
+	})
+}
+
+// RefreshToken handles the /auth/refresh endpoint. Accepts a refresh token and issues a new access and refresh token.
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.RefreshToken == "" {
+		utils.RespondError(c, http.StatusBadRequest, "invalid request")
+		return
+	}
+	token, refreshToken, err := h.service.RefreshTokens(c.Request.Context(), req.RefreshToken)
+	if err != nil {
+		if err == apperrors.ErrExpiredToken {
+			h.logger.Warnf("Expired refresh token: %v", err)
+			utils.RespondError(c, http.StatusUnauthorized, "expired refresh token")
+			return
+		}
+		if err == apperrors.ErrInvalidToken {
+			h.logger.Warnf("Invalid refresh token: %v", err)
+			utils.RespondError(c, http.StatusUnauthorized, "invalid refresh token")
+			return
+		}
+		h.logger.Errorf("Refresh token error: %v", err)
+		utils.RespondError(c, http.StatusInternalServerError, "could not refresh token")
+		return
+	}
+	utils.RespondSuccess(c, gin.H{
+		"token":         token,
+		"refresh_token": refreshToken,
 	})
 }

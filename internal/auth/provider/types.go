@@ -1,7 +1,5 @@
 package provider
 
-
-
 // OAuthToken represents an OAuth access token and related information.
 type OAuthToken struct {
 	AccessToken  string // The access token string
@@ -30,6 +28,7 @@ type DeviceCodeResponse struct {
 }
 
 type DeviceTokenResponse struct {
-	Token string             `json:"token"`
-	User  *UserInfo `json:"user"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
+	User         *UserInfo `json:"user"`
 }

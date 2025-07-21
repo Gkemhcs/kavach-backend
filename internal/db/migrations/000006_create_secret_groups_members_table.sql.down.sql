@@ -1,0 +1,1 @@
+DROP TABLE secret_group_members;

@@ -3,7 +3,41 @@ version: "1"
 packages:
   - name: "userdb"
     path: "internal/auth/gen"
-    queries: "internal/auth/users.sql"
+    queries: 
+      - "internal/auth/users.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true
+
+  - name: "orgdb"
+    path: "internal/org/gen"
+    queries: 
+      - "internal/org/queries.sql"
+      - "internal/org/org_members.sql"
+      - "internal/org/org_members_extended.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true
+
+  - name: "secretgroupdb"
+    path: "internal/secretgroup/gen"
+    queries: 
+      - "internal/secretgroup/queries.sql"
+      - "internal/secretgroup/secret_group_members.sql"
+      - "internal/secretgroup/secret_group_members_extended.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true
+
+  - name: "environmentdb"
+    path: "internal/environment/gen"
+    queries: 
+      - "internal/environment/queries.sql"
+      - "internal/environment/environment_members.sql"
+      - "internal/environment/environment_members_extended.sql"
     schema: "internal/db/migrations"
     engine: "postgresql"
     emit_json_tags: true
