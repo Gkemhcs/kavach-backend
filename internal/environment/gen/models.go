@@ -59,11 +59,12 @@ func (ns NullRoleType) Value() (driver.Value, error) {
 }
 
 type Environment struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	SecretGroupID uuid.UUID `json:"secret_group_id"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	SecretGroupID uuid.UUID      `json:"secret_group_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	Description   sql.NullString `json:"description"`
 }
 
 type EnvironmentMember struct {

@@ -25,6 +25,7 @@ func NewManager(secretKey string, accessTokenDuration, refreshTokenDuration time
 
 // Generate creates a signed JWT token string using the provided parameters.
 func (m *Manager) Generate(params CreateJwtParams) (string, error) {
+	// Set up claims for access token
 	claims := &Claims{
 		UserID:     params.UserID,
 		Provider:   params.Provider,
@@ -36,12 +37,14 @@ func (m *Manager) Generate(params CreateJwtParams) (string, error) {
 			IssuedAt:  jwtx.NewNumericDate(time.Now()),
 		},
 	}
+	// Create and sign the token
 	token := jwtx.NewWithClaims(jwtx.SigningMethodHS256, claims)
 	return token.SignedString([]byte(m.secretKey))
 }
 
 // GenerateRefresh creates a signed refresh JWT token string using the provided parameters, with a longer expiry.
 func (m *Manager) GenerateRefresh(params CreateJwtParams) (string, error) {
+	// Set up claims for refresh token
 	claims := &Claims{
 		UserID:     params.UserID,
 		Provider:   params.Provider,
@@ -53,12 +56,14 @@ func (m *Manager) GenerateRefresh(params CreateJwtParams) (string, error) {
 			IssuedAt:  jwtx.NewNumericDate(time.Now()),
 		},
 	}
+	// Create and sign the refresh token
 	token := jwtx.NewWithClaims(jwtx.SigningMethodHS256, claims)
 	return token.SignedString([]byte(m.secretKey))
 }
 
 // Verify parses and validates a JWT token string, returning the claims if valid.
 func (m *Manager) Verify(tokenStr string) (*Claims, error) {
+	// Parse the token with claims
 	token, err := jwtx.ParseWithClaims(tokenStr, &Claims{}, func(token *jwtx.Token) (interface{}, error) {
 		return []byte(m.secretKey), nil
 	})

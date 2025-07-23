@@ -16,6 +16,7 @@ type Querier interface {
 	DeleteOrganization(ctx context.Context, id uuid.UUID) error
 	GetOrgMember(ctx context.Context, arg GetOrgMemberParams) (OrgMember, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
+	GetOrganizationByName(ctx context.Context, arg GetOrganizationByNameParams) (Organization, error)
 	ListMembersOfOrganization(ctx context.Context, orgID uuid.UUID) ([]ListMembersOfOrganizationRow, error)
 	ListOrgMembers(ctx context.Context, orgID uuid.UUID) ([]OrgMember, error)
 	ListOrganizationsByOwner(ctx context.Context, ownerID uuid.UUID) ([]Organization, error)

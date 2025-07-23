@@ -1,27 +1,38 @@
 package secretgroup
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
 	environmentdb "github.com/Gkemhcs/kavach-backend/internal/environment/gen"
+	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
+	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/types"
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 // SecretGroupHandler handles HTTP requests for secret groups.
+// Acts as the controller for secret group-related API endpoints.
 type SecretGroupHandler struct {
-	service *SecretGroupService
-	logger  *logrus.Logger
+	service          *SecretGroupService
+	orgGetterService types.OrganizationGetter
+	logger           *logrus.Logger
 }
 
 // NewSecretGroupHandler creates a new SecretGroupHandler.
-func NewSecretGroupHandler(service *SecretGroupService, logger *logrus.Logger) *SecretGroupHandler {
-	return &SecretGroupHandler{service, logger}
+// Used to inject dependencies and enable testability.
+func NewSecretGroupHandler(service *SecretGroupService, logger *logrus.Logger, orgGetter types.OrganizationGetter) *SecretGroupHandler {
+	return &SecretGroupHandler{
+		service,
+		orgGetter,
+		logger}
 }
 
 // RegisterSecretGroupRoutes registers secret group routes under an organization with JWT middleware.
+// Centralizes route registration for maintainability and security.
 func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 	orgGroup *gin.RouterGroup,
 	environmentRepo environmentdb.Querier,
@@ -30,6 +41,7 @@ func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 	secretGroup := orgGroup.Group(":orgID/secret-groups")
 	secretGroup.Use(jwtMiddleware)
 	{
+		secretGroup.GET("/by-name/:groupName", handler.GetSecretGroupByName)
 		secretGroup.POST("/", handler.Create)
 		secretGroup.GET("/", handler.List)
 		secretGroup.GET("/my", handler.ListMySecretGroups)
@@ -38,58 +50,92 @@ func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 		secretGroup.DELETE(":groupID", handler.Delete)
 	}
 
+	// Register environment routes under /organizations/:orgID/secret-groups/:groupID/environments
 	enviromentService := environment.NewEnvironmentService(environmentRepo, handler.logger)
 	environmentHandler := environment.NewEnvironmentHandler(enviromentService, handler.logger)
-	// Register environment routes under /organizations/:orgID/secret-groups/:groupID/environments
 	environment.RegisterEnvironmentRoutes(environmentHandler, secretGroup, jwtMiddleware)
 }
 
+// ToSecretGroupResponse converts a secret group DB model to API response data.
+func ToSecretGroupResponse(secretgroup *secretgroupdb.SecretGroup) SecretGroupResponseData {
+	return SecretGroupResponseData{
+		ID:             secretgroup.ID.String(),
+		Name:           secretgroup.Name,
+		Description:    toNullableString(secretgroup.Description),
+		OrganizationID: secretgroup.OrganizationID.String(),
+		CreatedAt:      secretgroup.CreatedAt,
+		UpdatedAt:      secretgroup.UpdatedAt,
+	}
+}
+
+// toNullableString safely converts sql.NullString to *string for JSON marshalling.
+func toNullableString(ns sql.NullString) *string {
+	if ns.Valid {
+		return &ns.String
+	}
+	return nil
+}
+
 // Create handles POST /org/:orgID/secret-group
+// Creates a new secret group under an organization.
 func (h *SecretGroupHandler) Create(c *gin.Context) {
 	userID := c.GetString("user_id")
-	orgID := c.Param("orgID")
+	orgId := c.Param("orgID")
+
 	var req CreateSecretGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "invalid request")
+		utils.RespondError(c, http.StatusBadRequest, "bad_request", "invalid request")
 		return
 	}
-	req.OrganizationID = orgID
 	req.UserID = userID
+	req.OrganizationID = orgId
+
 	group, err := h.service.CreateSecretGroup(c.Request.Context(), req)
+	if err != nil && err == apiErrors.ErrDuplicateSecretGroup {
+		h.logger.Error("Secret  Group already exists")
+		apiErr, _ := err.(*apiErrors.APIError)
+
+		utils.RespondError(c, http.StatusBadRequest, apiErr.Code, apiErr.Message)
+	}
 	if err != nil {
 		h.logger.Error("CreateSecretGroup error: ", err)
-		utils.RespondError(c, http.StatusInternalServerError, "could not create secret group")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not create secret group")
 		return
 	}
-	utils.RespondSuccess(c, group)
+	utils.RespondSuccess(c, http.StatusCreated, ToSecretGroupResponse(group))
 }
 
 // List handles GET /org/:orgID/secret-group
+// Lists all secret groups under an organization.
 func (h *SecretGroupHandler) List(c *gin.Context) {
 	userID := c.GetString("user_id")
 	orgID := c.Param("orgID")
 	groups, err := h.service.ListSecretGroups(c.Request.Context(), userID, orgID)
 	if err != nil {
 		h.logger.Error("ListSecretGroups error: ", err)
-		utils.RespondError(c, http.StatusInternalServerError, "could not list secret groups")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not list secret groups")
 		return
 	}
-	utils.RespondSuccess(c, groups)
+	utils.RespondSuccess(c, http.StatusOK, groups)
 }
 
 // ListMySecretGroups handles GET /organizations/:orgID/secret-groups/my
+// Lists all secret groups where the user is a member.
 func (h *SecretGroupHandler) ListMySecretGroups(c *gin.Context) {
 	userID := c.GetString("user_id")
-	groups, err := h.service.ListMySecretGroups(c.Request.Context(), userID)
+	orgId := c.Param("orgID")
+	h.logger.Info(orgId,userID)
+	groups, err := h.service.ListMySecretGroups(c.Request.Context(), orgId, userID)
 	if err != nil {
 		h.logger.Error("ListMySecretGroups error: ", err)
-		utils.RespondError(c, http.StatusInternalServerError, "could not list secret groups")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not list secret groups")
 		return
 	}
-	utils.RespondSuccess(c, groups)
+	utils.RespondSuccess(c, http.StatusOK, groups)
 }
 
 // Get handles GET /org/:orgID/secret-group/:groupID
+// Gets a specific secret group by ID under an organization.
 func (h *SecretGroupHandler) Get(c *gin.Context) {
 	userID := c.GetString("user_id")
 	orgID := c.Param("orgID")
@@ -97,32 +143,55 @@ func (h *SecretGroupHandler) Get(c *gin.Context) {
 	group, err := h.service.GetSecretGroup(c.Request.Context(), userID, orgID, groupID)
 	if err != nil {
 		h.logger.Error("GetSecretGroup error: ", err)
-		utils.RespondError(c, http.StatusNotFound, "secret group not found")
+		utils.RespondError(c, http.StatusNotFound, "not_found", "secret group not found")
 		return
 	}
-	utils.RespondSuccess(c, group)
+	utils.RespondSuccess(c, http.StatusOK, group)
+}
+
+// GetSecretGroupByName handles GET /org/:orgID/secret-group/by-name/:groupName
+// Gets a specific secret group by name under an organization.
+func (h *SecretGroupHandler) GetSecretGroupByName(c *gin.Context) {
+	orgId := c.Param("orgID")
+	groupName := c.Param("groupName")
+	group, err := h.service.GetSecretGroupByName(c.Request.Context(), orgId, groupName)
+	if err == apiErrors.ErrSecretGroupNotFound {
+		apiErr, _ := err.(*apiErrors.APIError)
+		h.logger.Errorf("secretgroup  is not found with name %s", groupName)
+		utils.RespondError(c, http.StatusBadRequest, apiErr.Code, apiErr.Message)
+		return
+	}
+	if err != nil {
+		h.logger.Errorf("%v", err)
+		utils.RespondError(c, http.StatusBadRequest, "internal_error", "internal server error")
+		return
+	}
+	h.logger.Info("Request succeeded successfully")
+	utils.RespondSuccess(c, http.StatusOK, ToSecretGroupResponse(group))
 }
 
 // Update handles PATCH /org/:orgID/secret-group/:groupID
+// Updates a secret group by ID under an organization.
 func (h *SecretGroupHandler) Update(c *gin.Context) {
 	userID := c.GetString("user_id")
 	orgID := c.Param("orgID")
 	groupID := c.Param("groupID")
 	var req UpdateSecretGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "invalid request")
+		utils.RespondError(c, http.StatusBadRequest, "bad_request", "invalid request")
 		return
 	}
 	group, err := h.service.UpdateSecretGroup(c.Request.Context(), userID, orgID, groupID, req)
 	if err != nil {
 		h.logger.Error("UpdateSecretGroup error: ", err)
-		utils.RespondError(c, http.StatusInternalServerError, "could not update secret group")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not update secret group")
 		return
 	}
-	utils.RespondSuccess(c, group)
+	utils.RespondSuccess(c, http.StatusOK, group)
 }
 
 // Delete handles DELETE /org/:orgID/secret-group/:groupID
+// Deletes a secret group by ID under an organization.
 func (h *SecretGroupHandler) Delete(c *gin.Context) {
 	userID := c.GetString("user_id")
 	orgID := c.Param("orgID")
@@ -130,8 +199,8 @@ func (h *SecretGroupHandler) Delete(c *gin.Context) {
 	err := h.service.DeleteSecretGroup(c.Request.Context(), userID, orgID, groupID)
 	if err != nil {
 		h.logger.Error("DeleteSecretGroup error: ", err)
-		utils.RespondError(c, http.StatusInternalServerError, "could not delete secret group")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not delete secret group")
 		return
 	}
-	utils.RespondSuccess(c, gin.H{"message": "secret group deleted"})
+	utils.RespondSuccess(c, http.StatusOK, gin.H{"message": "secret group deleted"})
 }

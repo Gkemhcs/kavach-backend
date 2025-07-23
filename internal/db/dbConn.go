@@ -11,10 +11,9 @@ import (
 )
 
 // InitDB initializes the PostgreSQL database connection using the provided logger and config.
-// Returns a userdb.Queries instance for database operations.
-
+// Returns a *sql.DB instance for database operations. Ensures the connection is valid before returning.
 func InitDB(logger *logrus.Logger, config *config.Config) *sql.DB {
-	// Build the PostgreSQL connection URL
+	// Build the PostgreSQL connection URL from config values
 	dbURL := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 		config.DBUser, config.DBPassword, config.DBHost, config.DBPort, config.DBName)
 
@@ -29,7 +28,6 @@ func InitDB(logger *logrus.Logger, config *config.Config) *sql.DB {
 		logger.Fatal("Cannot ping DB: ", err)
 	}
 
-	// Create a new userdb.Queries instance for executing queries
-
+	// Return the database connection for use by repositories and services
 	return conn
 }

@@ -17,25 +17,34 @@ SELECT
   e.id AS environment_id,
   e.name,
   e.secret_group_id,
+  sg.name AS secret_group_name,
   e.created_at,
   em.user_id,
   em.role
 FROM environment_members em
 JOIN environments e ON em.environment_id = e.id
-WHERE em.user_id = $1
+JOIN secret_groups sg ON e.secret_group_id = sg.id
+WHERE em.user_id = $1 AND e.secret_group_id = $2 and sg.organization_id = $3
 `
 
-type ListEnvironmentsWithMemberRow struct {
-	EnvironmentID uuid.UUID `json:"environment_id"`
-	Name          string    `json:"name"`
-	SecretGroupID uuid.UUID `json:"secret_group_id"`
-	CreatedAt     time.Time `json:"created_at"`
-	UserID        uuid.UUID `json:"user_id"`
-	Role          RoleType  `json:"role"`
+type ListEnvironmentsWithMemberParams struct {
+	UserID         uuid.UUID `json:"user_id"`
+	SecretGroupID  uuid.UUID `json:"secret_group_id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
 }
 
-func (q *Queries) ListEnvironmentsWithMember(ctx context.Context, userID uuid.UUID) ([]ListEnvironmentsWithMemberRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEnvironmentsWithMember, userID)
+type ListEnvironmentsWithMemberRow struct {
+	EnvironmentID   uuid.UUID `json:"environment_id"`
+	Name            string    `json:"name"`
+	SecretGroupID   uuid.UUID `json:"secret_group_id"`
+	SecretGroupName string    `json:"secret_group_name"`
+	CreatedAt       time.Time `json:"created_at"`
+	UserID          uuid.UUID `json:"user_id"`
+	Role            RoleType  `json:"role"`
+}
+
+func (q *Queries) ListEnvironmentsWithMember(ctx context.Context, arg ListEnvironmentsWithMemberParams) ([]ListEnvironmentsWithMemberRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEnvironmentsWithMember, arg.UserID, arg.SecretGroupID, arg.OrganizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +56,7 @@ func (q *Queries) ListEnvironmentsWithMember(ctx context.Context, userID uuid.UU
 			&i.EnvironmentID,
 			&i.Name,
 			&i.SecretGroupID,
+			&i.SecretGroupName,
 			&i.CreatedAt,
 			&i.UserID,
 			&i.Role,

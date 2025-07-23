@@ -7,23 +7,25 @@ package environmentdb
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 const createEnvironment = `-- name: CreateEnvironment :one
-INSERT INTO environments (name, secret_group_id)
-VALUES ( $1, $2)
-RETURNING id, name, secret_group_id, created_at, updated_at
+INSERT INTO environments (name, secret_group_id,description)
+VALUES ( $1, $2, $3)
+RETURNING id, name, secret_group_id, created_at, updated_at, description
 `
 
 type CreateEnvironmentParams struct {
-	Name          string    `json:"name"`
-	SecretGroupID uuid.UUID `json:"secret_group_id"`
+	Name          string         `json:"name"`
+	SecretGroupID uuid.UUID      `json:"secret_group_id"`
+	Description   sql.NullString `json:"description"`
 }
 
 func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (Environment, error) {
-	row := q.db.QueryRowContext(ctx, createEnvironment, arg.Name, arg.SecretGroupID)
+	row := q.db.QueryRowContext(ctx, createEnvironment, arg.Name, arg.SecretGroupID, arg.Description)
 	var i Environment
 	err := row.Scan(
 		&i.ID,
@@ -31,6 +33,7 @@ func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentPa
 		&i.SecretGroupID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }
@@ -45,7 +48,7 @@ func (q *Queries) DeleteEnvironment(ctx context.Context, id uuid.UUID) error {
 }
 
 const getEnvironmentByID = `-- name: GetEnvironmentByID :one
-SELECT id, name, secret_group_id, created_at, updated_at FROM environments WHERE id = $1
+SELECT id, name, secret_group_id, created_at, updated_at, description FROM environments WHERE id = $1
 `
 
 func (q *Queries) GetEnvironmentByID(ctx context.Context, id uuid.UUID) (Environment, error) {
@@ -57,12 +60,36 @@ func (q *Queries) GetEnvironmentByID(ctx context.Context, id uuid.UUID) (Environ
 		&i.SecretGroupID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
+	)
+	return i, err
+}
+
+const getEnvironmentByName = `-- name: GetEnvironmentByName :one
+SELECT id, name, secret_group_id, created_at, updated_at, description FROM environments WHERE name = $1 and secret_group_id = $2
+`
+
+type GetEnvironmentByNameParams struct {
+	Name          string    `json:"name"`
+	SecretGroupID uuid.UUID `json:"secret_group_id"`
+}
+
+func (q *Queries) GetEnvironmentByName(ctx context.Context, arg GetEnvironmentByNameParams) (Environment, error) {
+	row := q.db.QueryRowContext(ctx, getEnvironmentByName, arg.Name, arg.SecretGroupID)
+	var i Environment
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.SecretGroupID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }
 
 const listEnvironmentsBySecretGroup = `-- name: ListEnvironmentsBySecretGroup :many
-SELECT id, name, secret_group_id, created_at, updated_at FROM environments WHERE secret_group_id = $1 ORDER BY created_at DESC
+SELECT id, name, secret_group_id, created_at, updated_at, description FROM environments WHERE secret_group_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListEnvironmentsBySecretGroup(ctx context.Context, secretGroupID uuid.UUID) ([]Environment, error) {
@@ -80,6 +107,7 @@ func (q *Queries) ListEnvironmentsBySecretGroup(ctx context.Context, secretGroup
 			&i.SecretGroupID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -99,7 +127,7 @@ UPDATE environments
 SET name = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, secret_group_id, created_at, updated_at
+RETURNING id, name, secret_group_id, created_at, updated_at, description
 `
 
 type UpdateEnvironmentParams struct {
@@ -116,6 +144,7 @@ func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentPa
 		&i.SecretGroupID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }

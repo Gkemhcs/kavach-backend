@@ -15,11 +15,12 @@ type Querier interface {
 	CreateSecretGroup(ctx context.Context, arg CreateSecretGroupParams) (SecretGroup, error)
 	DeleteSecretGroup(ctx context.Context, id uuid.UUID) error
 	GetSecretGroupByID(ctx context.Context, id uuid.UUID) (SecretGroup, error)
+	GetSecretGroupByName(ctx context.Context, arg GetSecretGroupByNameParams) (SecretGroup, error)
 	GetSecretGroupMember(ctx context.Context, arg GetSecretGroupMemberParams) (SecretGroupMember, error)
 	ListMembersOfSecretGroup(ctx context.Context, secretGroupID uuid.UUID) ([]ListMembersOfSecretGroupRow, error)
 	ListSecretGroupMembers(ctx context.Context, secretGroupID uuid.UUID) ([]SecretGroupMember, error)
 	ListSecretGroupsByOrg(ctx context.Context, organizationID uuid.UUID) ([]SecretGroup, error)
-	ListSecretGroupsWithMember(ctx context.Context, userID uuid.UUID) ([]ListSecretGroupsWithMemberRow, error)
+	ListSecretGroupsWithMember(ctx context.Context, arg ListSecretGroupsWithMemberParams) ([]ListSecretGroupsWithMemberRow, error)
 	RemoveSecretGroupMember(ctx context.Context, arg RemoveSecretGroupMemberParams) error
 	UpdateSecretGroup(ctx context.Context, arg UpdateSecretGroupParams) (SecretGroup, error)
 }

@@ -14,6 +14,7 @@ import (
 )
 
 // AuthService provides authentication logic using an OAuth provider, user repository, and JWT manager.
+// It encapsulates all business logic for authentication and user management.
 type AuthService struct {
 	provider provider.OAuthProvider
 	userRepo userdb.Querier
@@ -22,6 +23,7 @@ type AuthService struct {
 }
 
 // NewAuthService creates a new AuthService with the given provider, repository, and JWT manager.
+// This enables dependency injection and testability.
 func NewAuthService(provider provider.OAuthProvider, repository userdb.Querier, jwter *jwt.Manager, logger *logrus.Logger) *AuthService {
 	return &AuthService{
 		provider: provider,
@@ -31,6 +33,8 @@ func NewAuthService(provider provider.OAuthProvider, repository userdb.Querier, 
 	}
 }
 
+// StartDeviceFlow initiates the OAuth device flow for CLI login.
+// Returns device/user codes and verification URIs for user authentication.
 func (s *AuthService) StartDeviceFlow(ctx context.Context) (*provider.DeviceCodeResponse, error) {
 	s.logger.Info("Starting device flow with OAuth provider")
 	resp, err := s.provider.StartDeviceFlow(ctx)
@@ -49,6 +53,8 @@ func (s *AuthService) StartDeviceFlow(ctx context.Context) (*provider.DeviceCode
 	}, nil
 }
 
+// PollDeviceToken polls for a device flow token using the device code.
+// Upserts the user and returns tokens and user info for CLI login.
 func (s *AuthService) PollDeviceToken(ctx context.Context, deviceCode string) (*provider.DeviceTokenResponse, error) {
 	s.logger.Infof("Polling device token for device_code=%s", deviceCode)
 	userInfo, err := s.provider.PollDeviceToken(ctx, deviceCode)
@@ -56,6 +62,7 @@ func (s *AuthService) PollDeviceToken(ctx context.Context, deviceCode string) (*
 		s.logger.Errorf("Device token polling error: %v", err)
 		return nil, err
 	}
+	// Upsert user in database (create or update)
 	params := userdb.UpsertUserParams{
 		Provider:   userInfo.Provider,
 		ProviderID: strconv.Itoa(userInfo.ProviderID),
@@ -78,6 +85,7 @@ func (s *AuthService) PollDeviceToken(ctx context.Context, deviceCode string) (*
 		s.logger.Errorf("User upsert error: %v", err)
 		return nil, err
 	}
+	// Generate JWT and refresh token for the user
 	claims := &jwt.Claims{
 		UserID:     user.ID.String(),
 		Provider:   user.Provider,
@@ -105,11 +113,13 @@ func (s *AuthService) PollDeviceToken(ctx context.Context, deviceCode string) (*
 }
 
 // GetLoginURL returns the OAuth provider's login URL for the given state.
+// Used to initiate browser-based OAuth login.
 func (s *AuthService) GetLoginURL(state string) string {
 	return s.provider.GetAuthURL(state)
 }
 
 // HandleCallback processes the OAuth callback, upserts the user, and returns user info and a JWT token.
+// This is called after the user authorizes via the OAuth provider.
 func (s *AuthService) HandleCallback(ctx context.Context, code string) (*provider.UserInfo, string, string, error) {
 	s.logger.Infof("Handling OAuth callback with code=%s", code)
 	token, err := s.provider.ExchangeCode(ctx, code)
@@ -123,6 +133,7 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (*provide
 		s.logger.Errorf("Get user info error: %v", err)
 		return nil, "", "", fmt.Errorf("failed to get user info: %w", err)
 	}
+	// Upsert user in database (create or update)
 	params := userdb.UpsertUserParams{
 		Provider:   userInfo.Provider,
 		ProviderID: strconv.Itoa(userInfo.ProviderID),
@@ -145,6 +156,7 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (*provide
 		s.logger.Errorf("User upsert error: %v", err)
 		return nil, "", "", err
 	}
+	// Generate JWT and refresh token for the user
 	claims := &jwt.Claims{
 		UserID:     user.ID.String(),
 		Provider:   user.Provider,
@@ -168,6 +180,7 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (*provide
 }
 
 // RefreshTokens validates the refresh token and issues new access and refresh tokens.
+// Used for session renewal and token rotation.
 func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (string, string, error) {
 	s.logger.Info("Refreshing tokens using refresh token")
 	claims, err := s.jwter.Verify(refreshToken)
@@ -195,6 +208,7 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (s
 }
 
 // createJwtParamsFromClaims creates CreateJwtParams from JWT claims (for refresh token flow)
+// This helper is used to avoid code duplication when generating tokens from claims.
 func (s *AuthService) createJwtParamsFromClaims(claims *jwt.Claims) jwt.CreateJwtParams {
 	return jwt.CreateJwtParams{
 		UserID:     claims.UserID,

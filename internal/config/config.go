@@ -5,6 +5,7 @@ import (
 )
 
 // Config holds all configuration values for the application, loaded from environment variables or config files.
+// This struct centralizes configuration for maintainability and testability.
 type Config struct {
 	Port                 string // HTTP server port
 	Env                  string // Application environment (e.g., development, production)
@@ -23,6 +24,7 @@ type Config struct {
 }
 
 // Load reads configuration from the .env file and environment variables, returning a Config struct.
+// This function enables flexible configuration for different environments (dev, prod, test).
 func Load() (*Config, error) {
 	viper.SetConfigFile(".env")
 	viper.AutomaticEnv()

@@ -3,25 +3,30 @@ package secretgroup
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
 // SecretGroupService provides business logic for secret groups.
+// Encapsulates all secret group-related operations and validation.
 type SecretGroupService struct {
 	repo   secretgroupdb.Querier
 	logger *logrus.Logger
 }
 
 // NewSecretGroupService creates a new SecretGroupService.
+// Used to inject dependencies and enable testability.
 func NewSecretGroupService(repo secretgroupdb.Querier, logger *logrus.Logger) *SecretGroupService {
 	return &SecretGroupService{repo, logger}
 }
 
 // CreateSecretGroup creates a new secret group under an organization.
+// Adds the creator as the owner member of the secret group.
 func (s *SecretGroupService) CreateSecretGroup(ctx context.Context, req CreateSecretGroupRequest) (*secretgroupdb.SecretGroup, error) {
 	s.logger.Infof("Creating secret group for org_id=%s user_id=%s", req.OrganizationID, req.UserID)
 	userID, err := uuid.Parse(req.UserID)
@@ -35,6 +40,7 @@ func (s *SecretGroupService) CreateSecretGroup(ctx context.Context, req CreateSe
 	params := secretgroupdb.CreateSecretGroupParams{
 		Name:           req.Name,
 		OrganizationID: orgUUID,
+		Description:    utils.DerefString(req.Description),
 	}
 	group, err := s.repo.CreateSecretGroup(ctx, params)
 	if appErrors.IsUniqueViolation(err) {
@@ -70,17 +76,20 @@ func (s *SecretGroupService) ListSecretGroups(ctx context.Context, userID, orgID
 }
 
 // ListMySecretGroups lists all secret groups where the user is a member.
-func (s *SecretGroupService) ListMySecretGroups(ctx context.Context, userID string) ([]secretgroupdb.ListSecretGroupsWithMemberRow, error) {
+func (s *SecretGroupService) ListMySecretGroups(ctx context.Context, orgId, userID string) ([]secretgroupdb.ListSecretGroupsWithMemberRow, error) {
 	s.logger.Infof("Listing secret groups for user_id=%s", userID)
-	uuidUser, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, appErrors.ErrInternalServer
+
+	params := secretgroupdb.ListSecretGroupsWithMemberParams{
+		UserID:         uuid.MustParse(userID),
+		OrganizationID: uuid.MustParse(orgId),
 	}
-	groups, err := s.repo.ListSecretGroupsWithMember(ctx, uuidUser)
+
+	groups, err := s.repo.ListSecretGroupsWithMember(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 	return groups, nil
+
 }
 
 // GetSecretGroup gets a specific secret group by ID under an organization.
@@ -96,6 +105,22 @@ func (s *SecretGroupService) GetSecretGroup(ctx context.Context, userID, orgID, 
 			return nil, appErrors.ErrNotFound
 		}
 		return nil, appErrors.ErrInternalServer
+	}
+	return &group, nil
+}
+
+// GetSecretGroupByName gets a specific secret group by name under an organization.
+func (s *SecretGroupService) GetSecretGroupByName(ctx context.Context, orgId, groupName string) (*secretgroupdb.SecretGroup, error) {
+	params := secretgroupdb.GetSecretGroupByNameParams{
+		Name:           groupName,
+		OrganizationID: uuid.MustParse(orgId),
+	}
+	group, err := s.repo.GetSecretGroupByName(ctx, params)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return nil, appErrors.ErrSecretGroupNotFound
+	}
+	if err != nil {
+		return nil, err
 	}
 	return &group, nil
 }

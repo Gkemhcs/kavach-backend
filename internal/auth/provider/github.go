@@ -173,6 +173,7 @@ func (g *GitHubProvider) PollDeviceToken(ctx context.Context, deviceCode string)
 
 	start := time.Now()
 	for {
+		// Timeout after 2 minutes
 		if time.Since(start) > 2*time.Minute {
 			return nil, fmt.Errorf("device_authorization_timeout")
 		}

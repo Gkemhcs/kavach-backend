@@ -16,13 +16,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Server represents the HTTP server for the Kavach backend API.
 type Server struct {
 	cfg    *config.Config
 	log    *logrus.Logger
 	engine *gin.Engine
 }
 
-
+// SetupRoutes registers all API routes and middleware for the server.
+// This function centralizes route registration for maintainability.
 func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,orgHandler *org.OrganizationHandler,dbConn *sql.DB,jwter *jwt.Manager) {
 	// Create API v1 router group
 	v1 := s.engine.Group("/api/v1")
@@ -39,6 +41,7 @@ func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,orgHandler *org.Organ
 	// Example: orgs.RegisterOrgRoutes(orgHandler, v1)
 }
 
+// routes registers health check and other non-API routes.
 func (s *Server) routes() {
 	s.engine.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -48,6 +51,7 @@ func (s *Server) routes() {
 	})
 }
 
+// New creates a new Server instance with the given config and logger.
 func New(cfg *config.Config, log *logrus.Logger) *Server {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
@@ -60,6 +64,7 @@ func New(cfg *config.Config, log *logrus.Logger) *Server {
 	}
 }
 
+// Start runs the HTTP server on the configured port.
 func (s *Server) Start() error {
 	s.routes()
 	addr := fmt.Sprintf(":%s", s.cfg.Port)

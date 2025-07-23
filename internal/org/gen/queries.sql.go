@@ -65,6 +65,29 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 	return i, err
 }
 
+const getOrganizationByName = `-- name: GetOrganizationByName :one
+SELECT id, name, description, owner_id, created_at, updated_at FROM organizations WHERE name = $1 and owner_id = $2
+`
+
+type GetOrganizationByNameParams struct {
+	Name    string    `json:"name"`
+	OwnerID uuid.UUID `json:"owner_id"`
+}
+
+func (q *Queries) GetOrganizationByName(ctx context.Context, arg GetOrganizationByNameParams) (Organization, error) {
+	row := q.db.QueryRowContext(ctx, getOrganizationByName, arg.Name, arg.OwnerID)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listOrganizationsByOwner = `-- name: ListOrganizationsByOwner :many
 SELECT id, name, description, owner_id, created_at, updated_at FROM organizations WHERE owner_id = $1 ORDER BY created_at DESC
 `

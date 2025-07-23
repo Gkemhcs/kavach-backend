@@ -7,23 +7,25 @@ package secretgroupdb
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 const createSecretGroup = `-- name: CreateSecretGroup :one
-INSERT INTO secret_groups ( name, organization_id)
-VALUES ($1, $2)
+INSERT INTO secret_groups ( name, organization_id,description)
+VALUES ($1, $2, $3)
 RETURNING id, name, description, organization_id, created_at, updated_at
 `
 
 type CreateSecretGroupParams struct {
-	Name           string    `json:"name"`
-	OrganizationID uuid.UUID `json:"organization_id"`
+	Name           string         `json:"name"`
+	OrganizationID uuid.UUID      `json:"organization_id"`
+	Description    sql.NullString `json:"description"`
 }
 
 func (q *Queries) CreateSecretGroup(ctx context.Context, arg CreateSecretGroupParams) (SecretGroup, error) {
-	row := q.db.QueryRowContext(ctx, createSecretGroup, arg.Name, arg.OrganizationID)
+	row := q.db.QueryRowContext(ctx, createSecretGroup, arg.Name, arg.OrganizationID, arg.Description)
 	var i SecretGroup
 	err := row.Scan(
 		&i.ID,
@@ -51,6 +53,29 @@ SELECT id, name, description, organization_id, created_at, updated_at FROM secre
 
 func (q *Queries) GetSecretGroupByID(ctx context.Context, id uuid.UUID) (SecretGroup, error) {
 	row := q.db.QueryRowContext(ctx, getSecretGroupByID, id)
+	var i SecretGroup
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.OrganizationID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getSecretGroupByName = `-- name: GetSecretGroupByName :one
+SELECT id, name, description, organization_id, created_at, updated_at FROM secret_groups WHERE name = $1 and organization_id = $2
+`
+
+type GetSecretGroupByNameParams struct {
+	Name           string    `json:"name"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+}
+
+func (q *Queries) GetSecretGroupByName(ctx context.Context, arg GetSecretGroupByNameParams) (SecretGroup, error) {
+	row := q.db.QueryRowContext(ctx, getSecretGroupByName, arg.Name, arg.OrganizationID)
 	var i SecretGroup
 	err := row.Scan(
 		&i.ID,

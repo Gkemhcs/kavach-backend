@@ -19,16 +19,16 @@ type UserInfo struct {
 
 // DeviceCodeResponse represents the response from the device code endpoint.
 type DeviceCodeResponse struct {
-	DeviceCode              string `json:"device_code"`
-	UserCode                string `json:"user_code"`
-	VerificationURI         string `json:"verification_uri"`
-	VerificationURIComplete string `json:"verification_uri_complete"`
-	ExpiresIn               int    `json:"expires_in"`
-	Interval                int    `json:"interval"`
+	DeviceCode              string `json:"device_code"`              // Code for device authentication
+	UserCode                string `json:"user_code"`                // Code for user authentication
+	VerificationURI         string `json:"verification_uri"`         // URI for user verification
+	VerificationURIComplete string `json:"verification_uri_complete"`// Complete URI for user verification
+	ExpiresIn               int    `json:"expires_in"`               // Expiry time in seconds
+	Interval                int    `json:"interval"`                 // Polling interval in seconds
 }
 
 type DeviceTokenResponse struct {
-	Token        string    `json:"token"`
-	RefreshToken string    `json:"refresh_token"`
-	User         *UserInfo `json:"user"`
+	Token        string    `json:"token"`         // Access token
+	RefreshToken string    `json:"refresh_token"` // Refresh token
+	User         *UserInfo `json:"user"`          // Associated user info
 }

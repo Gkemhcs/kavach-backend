@@ -63,25 +63,33 @@ SELECT
   sg.id AS secret_group_id,
   sg.name,
   sg.organization_id,
+  o.name AS organization_name,
   sg.created_at,
   sgm.user_id,
   sgm.role
 FROM secret_group_members sgm
 JOIN secret_groups sg ON sgm.secret_group_id = sg.id
-WHERE sgm.user_id = $1
+JOIN organizations o ON sg.organization_id = o.id
+WHERE sgm.user_id = $1 AND  sg.organization_id = $2
 `
 
-type ListSecretGroupsWithMemberRow struct {
-	SecretGroupID  uuid.UUID `json:"secret_group_id"`
-	Name           string    `json:"name"`
-	OrganizationID uuid.UUID `json:"organization_id"`
-	CreatedAt      time.Time `json:"created_at"`
+type ListSecretGroupsWithMemberParams struct {
 	UserID         uuid.UUID `json:"user_id"`
-	Role           RoleType  `json:"role"`
+	OrganizationID uuid.UUID `json:"organization_id"`
 }
 
-func (q *Queries) ListSecretGroupsWithMember(ctx context.Context, userID uuid.UUID) ([]ListSecretGroupsWithMemberRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSecretGroupsWithMember, userID)
+type ListSecretGroupsWithMemberRow struct {
+	SecretGroupID    uuid.UUID `json:"secret_group_id"`
+	Name             string    `json:"name"`
+	OrganizationID   uuid.UUID `json:"organization_id"`
+	OrganizationName string    `json:"organization_name"`
+	CreatedAt        time.Time `json:"created_at"`
+	UserID           uuid.UUID `json:"user_id"`
+	Role             RoleType  `json:"role"`
+}
+
+func (q *Queries) ListSecretGroupsWithMember(ctx context.Context, arg ListSecretGroupsWithMemberParams) ([]ListSecretGroupsWithMemberRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSecretGroupsWithMember, arg.UserID, arg.OrganizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +101,7 @@ func (q *Queries) ListSecretGroupsWithMember(ctx context.Context, userID uuid.UU
 			&i.SecretGroupID,
 			&i.Name,
 			&i.OrganizationID,
+			&i.OrganizationName,
 			&i.CreatedAt,
 			&i.UserID,
 			&i.Role,

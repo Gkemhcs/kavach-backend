@@ -15,10 +15,11 @@ type Querier interface {
 	CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (Environment, error)
 	DeleteEnvironment(ctx context.Context, id uuid.UUID) error
 	GetEnvironmentByID(ctx context.Context, id uuid.UUID) (Environment, error)
+	GetEnvironmentByName(ctx context.Context, arg GetEnvironmentByNameParams) (Environment, error)
 	GetEnvironmentMember(ctx context.Context, arg GetEnvironmentMemberParams) (EnvironmentMember, error)
 	ListEnvironmentMembers(ctx context.Context, environmentID uuid.UUID) ([]EnvironmentMember, error)
 	ListEnvironmentsBySecretGroup(ctx context.Context, secretGroupID uuid.UUID) ([]Environment, error)
-	ListEnvironmentsWithMember(ctx context.Context, userID uuid.UUID) ([]ListEnvironmentsWithMemberRow, error)
+	ListEnvironmentsWithMember(ctx context.Context, arg ListEnvironmentsWithMemberParams) ([]ListEnvironmentsWithMemberRow, error)
 	ListMembersOfEnvironment(ctx context.Context, environmentID uuid.UUID) ([]ListMembersOfEnvironmentRow, error)
 	RemoveEnvironmentMember(ctx context.Context, arg RemoveEnvironmentMemberParams) error
 	UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) (Environment, error)
