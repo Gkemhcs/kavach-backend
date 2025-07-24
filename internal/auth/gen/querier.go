@@ -6,15 +6,27 @@ package userdb
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 type Querier interface {
+	// CreateUser inserts a new user into the users table and returns the created user.
+	// Used during initial OAuth registration when a user logs in for the first time.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// DeleteUser removes a user from the users table by ID.
+	// Used for account deletion and admin operations.
 	DeleteUser(ctx context.Context, id uuid.UUID) error
+	GetUserByGithubUserName(ctx context.Context, name sql.NullString) (User, error)
+	// GetUserByID fetches a user by their unique ID.
+	// Used for user profile lookups and internal references.
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// GetUserByProviderID fetches a user by provider and provider_id.
+	// Used to look up users during login and token refresh.
 	GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (User, error)
+	// UpsertUser inserts or updates a user based on provider and provider_id.
+	// Ensures user info is always up-to-date after OAuth login.
 	UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error)
 }
 

@@ -6,6 +6,9 @@ import (
 	"errors"
 
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
+	"github.com/Gkemhcs/kavach-backend/internal/iam"
+	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
+
 	orgdb "github.com/Gkemhcs/kavach-backend/internal/org/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/google/uuid"
@@ -15,14 +18,15 @@ import (
 // OrganizationService provides business logic for organizations.
 // Encapsulates all organization-related operations and validation.
 type OrganizationService struct {
-	repo   orgdb.Querier
-	logger *logrus.Logger
+	repo       orgdb.Querier
+	logger     *logrus.Logger
+	iamService iam.IamService
 }
 
 // NewOrganizationService creates a new OrganizationService.
 // Used to inject dependencies and enable testability.
-func NewOrganizationService(repo orgdb.Querier, logger *logrus.Logger) *OrganizationService {
-	return &OrganizationService{repo, logger}
+func NewOrganizationService(repo orgdb.Querier, logger *logrus.Logger, iamService iam.IamService) *OrganizationService {
+	return &OrganizationService{repo, logger, iamService}
 
 }
 
@@ -46,12 +50,17 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, req Create
 	if err != nil {
 		return nil, appErrors.ErrInternalServer
 	}
-	addOrgMemberParams := orgdb.AddOrgMemberParams{
-		OrgID:  org.ID,
-		UserID: ownerID,
-		Role:   orgdb.RoleTypeOwner,
+	createBindingParams := iam.CreateRoleBindingRequest{
+		UserID:         ownerID,
+		Role:           "owner",
+		ResourceType:   "organization",
+		ResourceID:     org.ID,
+		OrganizationID: org.ID,
+		SecretGroupID:  uuid.NullUUID{Valid: false},
+
+		EnvironmentID: uuid.NullUUID{Valid: false},
 	}
-	err = s.repo.AddOrgMember(ctx, addOrgMemberParams)
+	_, err = s.iamService.CreateRoleBinding(ctx, createBindingParams)
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +82,9 @@ func (s *OrganizationService) ListOrganizations(ctx context.Context, userID stri
 }
 
 // ListMyOrganizations lists all organizations where the user is a member.
-func (s *OrganizationService) ListMyOrganizations(ctx context.Context, userID string) ([]orgdb.ListOrganizationsWithMemberRow, error) {
+func (s *OrganizationService) ListMyOrganizations(ctx context.Context, userID string) ([]iam_db.ListAccessibleOrganizationsRow, error) {
 	s.logger.Infof("Listing organizations for user_id=%s", userID)
-	orgs, err := s.repo.ListOrganizationsWithMember(ctx, uuid.MustParse(userID))
+	orgs, err := s.iamService.ListAccessibleOrganizations(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -100,14 +109,10 @@ func (s *OrganizationService) GetOrganization(ctx context.Context, userID, orgID
 }
 
 // GetOrganizationByName gets a specific organization by name for the user.
-func (s *OrganizationService) GetOrganizationByName(ctx context.Context, orgName string, userId string) (*orgdb.Organization, error) {
+func (s *OrganizationService) GetOrganizationByName(ctx context.Context, orgName string,) (*orgdb.Organization, error) {
 
-	userID := uuid.MustParse(userId)
-	params := orgdb.GetOrganizationByNameParams{
-		OwnerID: userID,
-		Name:    orgName,
-	}
-	org, err := s.repo.GetOrganizationByName(ctx, params)
+
+	org, err := s.repo.GetOrganizationByName(ctx, orgName)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, appErrors.ErrOrganizationNotFound
 	}

@@ -30,6 +30,8 @@ type ListMembersOfSecretGroupRow struct {
 	SecretGroupName string    `json:"secret_group_name"`
 }
 
+// ListMembersOfSecretGroup returns all members and their roles for a given secret group.
+// Used to manage and display secret group membership and permissions.
 func (q *Queries) ListMembersOfSecretGroup(ctx context.Context, secretGroupID uuid.UUID) ([]ListMembersOfSecretGroupRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMembersOfSecretGroup, secretGroupID)
 	if err != nil {
@@ -88,6 +90,8 @@ type ListSecretGroupsWithMemberRow struct {
 	Role             RoleType  `json:"role"`
 }
 
+// ListSecretGroupsWithMember returns all secret groups a user is a member of within an organization.
+// Used to show secret groups accessible to a user for a given org context.
 func (q *Queries) ListSecretGroupsWithMember(ctx context.Context, arg ListSecretGroupsWithMemberParams) ([]ListSecretGroupsWithMemberRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSecretGroupsWithMember, arg.UserID, arg.OrganizationID)
 	if err != nil {

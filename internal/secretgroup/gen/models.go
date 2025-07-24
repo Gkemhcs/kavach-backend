@@ -13,6 +13,49 @@ import (
 	"github.com/google/uuid"
 )
 
+type ResourceType string
+
+const (
+	ResourceTypeOrganization ResourceType = "organization"
+	ResourceTypeSecretGroup  ResourceType = "secret_group"
+	ResourceTypeEnvironment  ResourceType = "environment"
+)
+
+func (e *ResourceType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ResourceType(s)
+	case string:
+		*e = ResourceType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ResourceType: %T", src)
+	}
+	return nil
+}
+
+type NullResourceType struct {
+	ResourceType ResourceType `json:"resource_type"`
+	Valid        bool         `json:"valid"` // Valid is true if ResourceType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullResourceType) Scan(value interface{}) error {
+	if value == nil {
+		ns.ResourceType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ResourceType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullResourceType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ResourceType), nil
+}
+
 type RoleType string
 
 const (
@@ -58,6 +101,50 @@ func (ns NullRoleType) Value() (driver.Value, error) {
 	return string(ns.RoleType), nil
 }
 
+type UserRole string
+
+const (
+	UserRoleOwner  UserRole = "owner"
+	UserRoleAdmin  UserRole = "admin"
+	UserRoleEditor UserRole = "editor"
+	UserRoleViewer UserRole = "viewer"
+)
+
+func (e *UserRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserRole(s)
+	case string:
+		*e = UserRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserRole: %T", src)
+	}
+	return nil
+}
+
+type NullUserRole struct {
+	UserRole UserRole `json:"user_role"`
+	Valid    bool     `json:"valid"` // Valid is true if UserRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserRole), nil
+}
+
 type Environment struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
@@ -88,6 +175,20 @@ type Organization struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
+type RoleBinding struct {
+	ID             uuid.UUID     `json:"id"`
+	UserID         uuid.NullUUID `json:"user_id"`
+	Role           UserRole      `json:"role"`
+	ResourceType   ResourceType  `json:"resource_type"`
+	ResourceID     uuid.UUID     `json:"resource_id"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+	OrganizationID uuid.UUID     `json:"organization_id"`
+	SecretGroupID  uuid.NullUUID `json:"secret_group_id"`
+	EnvironmentID  uuid.NullUUID `json:"environment_id"`
+	GroupID        uuid.NullUUID `json:"group_id"`
+}
+
 type SecretGroup struct {
 	ID             uuid.UUID      `json:"id"`
 	Name           string         `json:"name"`
@@ -112,4 +213,19 @@ type User struct {
 	AvatarUrl  sql.NullString `json:"avatar_url"`
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`
+}
+
+type UserGroup struct {
+	ID             uuid.UUID      `json:"id"`
+	Name           string         `json:"name"`
+	OrganizationID uuid.UUID      `json:"organization_id"`
+	Description    sql.NullString `json:"description"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+}
+
+type UserGroupMember struct {
+	UserID      uuid.UUID `json:"user_id"`
+	UserGroupID uuid.UUID `json:"user_group_id"`
+	CreatedAt   time.Time `json:"created_at"`
 }

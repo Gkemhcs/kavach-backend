@@ -32,4 +32,4 @@ SELECT * FROM organizations WHERE owner_id = $1 ORDER BY created_at DESC;
 -- GetOrganizationByName fetches an organization by name and owner.
 -- Used to ensure organization name uniqueness within a user's organizations and for lookups.
 -- name: GetOrganizationByName :one
-SELECT * FROM organizations WHERE name = $1 and owner_id = $2;
+SELECT * FROM organizations WHERE name = $1 ;

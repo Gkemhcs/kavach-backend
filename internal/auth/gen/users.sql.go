@@ -29,6 +29,8 @@ type CreateUserParams struct {
 	AvatarUrl  sql.NullString `json:"avatar_url"`
 }
 
+// CreateUser inserts a new user into the users table and returns the created user.
+// Used during initial OAuth registration when a user logs in for the first time.
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, createUser,
 		arg.Provider,
@@ -55,9 +57,32 @@ const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1
 `
 
+// DeleteUser removes a user from the users table by ID.
+// Used for account deletion and admin operations.
 func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteUser, id)
 	return err
+}
+
+const getUserByGithubUserName = `-- name: GetUserByGithubUserName :one
+SELECT id, provider, provider_id, email, name, avatar_url, created_at, updated_at FROM users
+WHERE name = $1 and provider = 'github'
+`
+
+func (q *Queries) GetUserByGithubUserName(ctx context.Context, name sql.NullString) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByGithubUserName, name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.ProviderID,
+		&i.Email,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
@@ -66,6 +91,8 @@ WHERE id = $1
 LIMIT 1
 `
 
+// GetUserByID fetches a user by their unique ID.
+// Used for user profile lookups and internal references.
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
@@ -93,6 +120,8 @@ type GetUserByProviderIDParams struct {
 	ProviderID string `json:"provider_id"`
 }
 
+// GetUserByProviderID fetches a user by provider and provider_id.
+// Used to look up users during login and token refresh.
 func (q *Queries) GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByProviderID, arg.Provider, arg.ProviderID)
 	var i User
@@ -128,6 +157,8 @@ type UpsertUserParams struct {
 	AvatarUrl  sql.NullString `json:"avatar_url"`
 }
 
+// UpsertUser inserts or updates a user based on provider and provider_id.
+// Ensures user info is always up-to-date after OAuth login.
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, upsertUser,
 		arg.Provider,

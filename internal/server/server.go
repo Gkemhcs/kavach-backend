@@ -1,17 +1,17 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/Gkemhcs/kavach-backend/internal/auth"
 	"github.com/Gkemhcs/kavach-backend/internal/auth/jwt"
 	"github.com/Gkemhcs/kavach-backend/internal/config"
-	environmentdb "github.com/Gkemhcs/kavach-backend/internal/environment/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/environment"
+	"github.com/Gkemhcs/kavach-backend/internal/groups"
+	"github.com/Gkemhcs/kavach-backend/internal/iam"
 	"github.com/Gkemhcs/kavach-backend/internal/middleware"
 	"github.com/Gkemhcs/kavach-backend/internal/org"
-	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
-
+	"github.com/Gkemhcs/kavach-backend/internal/secretgroup"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -25,17 +25,21 @@ type Server struct {
 
 // SetupRoutes registers all API routes and middleware for the server.
 // This function centralizes route registration for maintainability.
-func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,orgHandler *org.OrganizationHandler,dbConn *sql.DB,jwter *jwt.Manager) {
+func (s *Server) SetupRoutes(authHandler *auth.AuthHandler, 
+	iamHandler *iam.IamHandler,
+	orgHandler *org.OrganizationHandler, 
+	secretgroupHandler *secretgroup.SecretGroupHandler, 
+	environmentHandler *environment.EnvironmentHandler, 
+	userGroupHandler *groups.UserGroupHandler,
+	jwter *jwt.Manager) {
 	// Create API v1 router group
 	v1 := s.engine.Group("/api/v1")
-	jwtMiddleware:=middleware.JWTAuthMiddleware(jwter)
+	jwtMiddleware := middleware.JWTAuthMiddleware(jwter)
 
 	// Register auth routes
 	auth.RegisterAuthRoutes(authHandler, v1)
-	
-	org.RegisterOrganizationRoutes(orgHandler,v1,
-		secretgroupdb.New(dbConn),
-	environmentdb.New(dbConn),jwtMiddleware)
+	iam.RegisterIamRoutes(iamHandler,v1)
+	org.RegisterOrganizationRoutes(orgHandler, v1, secretgroupHandler, environmentHandler, userGroupHandler,jwtMiddleware)
 	// Add other route groups here as needed
 	// Example: secrets.RegisterSecretRoutes(secretHandler, v1)
 	// Example: orgs.RegisterOrgRoutes(orgHandler, v1)

@@ -6,6 +6,7 @@ import (
 
 	environmentdb "github.com/Gkemhcs/kavach-backend/internal/environment/gen"
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
+	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
 
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/gin-gonic/gin"
@@ -44,7 +45,7 @@ func RegisterEnvironmentRoutes(handler *EnvironmentHandler,
 }
 
 // ToEnvironmentResponse converts an environment DB model to API response data.
-func ToEnvironmentResponse(environment *environmentdb.Environment) EnvironmentResponseData {
+func ToEnvironmentResponse(environment *environmentdb.GetEnvironmentByNameRow) EnvironmentResponseData {
 	return EnvironmentResponseData{
 		Name:          environment.Name,
 		Description:   toNullableString(environment.Description),
@@ -52,9 +53,19 @@ func ToEnvironmentResponse(environment *environmentdb.Environment) EnvironmentRe
 		CreatedAt:     environment.CreatedAt,
 		UpdatedAt:     environment.UpdatedAt,
 		ID:            environment.ID.String(),
+		OrganizationID: environment.OrganizationID.String(),
 	}
 }
 
+
+func ToListAccessibleEnvironmentsRow(env iam_db.ListAccessibleEnvironmentsRow)ListAccessibleEnvironmentsRow{
+	return ListAccessibleEnvironmentsRow{
+		ID: env.ID.UUID.String(),
+		Name: env.Name,
+		SecretGroupName: env.SecretGroupName,
+		Role: string(env.Role),
+	}
+}
 // toNullableString safely converts sql.NullString to *string for JSON marshalling.
 func toNullableString(ns sql.NullString) *string {
 	if ns.Valid {
@@ -133,7 +144,13 @@ func (h *EnvironmentHandler) ListMyEnvironments(c *gin.Context) {
 		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not list environments")
 		return
 	}
-	utils.RespondSuccess(c, http.StatusOK, envs)
+	var listEnvRows []ListAccessibleEnvironmentsRow
+
+	for _,env := range envs{
+		listEnvRows=append(listEnvRows,ToListAccessibleEnvironmentsRow(env))
+	}
+
+	utils.RespondSuccess(c, http.StatusOK, listEnvRows)
 }
 
 // Get handles GET /org/:orgID/secret-group/:groupID/env/:envID
@@ -181,7 +198,7 @@ func (h *EnvironmentHandler) GetEnvironmentByName(c *gin.Context) {
 	}
 
 	h.logger.Info("Request succeeded successfully")
-	utils.RespondSuccess(c, http.StatusOK, ToEnvironmentResponse(environment))
+	utils.RespondSuccess(c, http.StatusOK, environment)
 
 }
 

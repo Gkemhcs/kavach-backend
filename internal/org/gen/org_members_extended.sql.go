@@ -30,6 +30,8 @@ type ListMembersOfOrganizationRow struct {
 	OrgName string    `json:"org_name"`
 }
 
+// ListMembersOfOrganization returns all members and their roles for a given organization.
+// Used to manage and display organization membership and permissions.
 func (q *Queries) ListMembersOfOrganization(ctx context.Context, orgID uuid.UUID) ([]ListMembersOfOrganizationRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMembersOfOrganization, orgID)
 	if err != nil {
@@ -78,6 +80,8 @@ type ListOrganizationsWithMemberRow struct {
 	Role      RoleType  `json:"role"`
 }
 
+// ListOrganizationsWithMember returns all organizations a user is a member of.
+// Used to show organizations accessible to a user for a given context.
 func (q *Queries) ListOrganizationsWithMember(ctx context.Context, userID uuid.UUID) ([]ListOrganizationsWithMemberRow, error) {
 	rows, err := q.db.QueryContext(ctx, listOrganizationsWithMember, userID)
 	if err != nil {

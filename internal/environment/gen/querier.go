@@ -11,17 +11,41 @@ import (
 )
 
 type Querier interface {
+	// AddEnvironmentMember adds a user as a member to an environment with a specific role.
+	// Used to grant access and permissions to users for an environment.
 	AddEnvironmentMember(ctx context.Context, arg AddEnvironmentMemberParams) error
+	// CreateEnvironment inserts a new environment into the environments table.
+	// Used when a user creates a new environment within a secret group.
 	CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (Environment, error)
+	// DeleteEnvironment removes an environment by its ID.
+	// Used for environment deletion and cleanup.
 	DeleteEnvironment(ctx context.Context, id uuid.UUID) error
+	// GetEnvironmentByID fetches an environment by its unique ID.
+	// Used for environment detail views and internal lookups.
 	GetEnvironmentByID(ctx context.Context, id uuid.UUID) (Environment, error)
-	GetEnvironmentByName(ctx context.Context, arg GetEnvironmentByNameParams) (Environment, error)
+	// GetEnvironmentByName fetches an environment by name and secret group.
+	// Used to ensure environment name uniqueness within a group and for lookups.
+	GetEnvironmentByName(ctx context.Context, arg GetEnvironmentByNameParams) (GetEnvironmentByNameRow, error)
+	// GetEnvironmentMember fetches a specific member of an environment by user ID.
+	// Used to check membership and permissions for a user in an environment.
 	GetEnvironmentMember(ctx context.Context, arg GetEnvironmentMemberParams) (EnvironmentMember, error)
+	// ListEnvironmentMembers returns all members of a given environment.
+	// Used to display or manage all users with access to an environment.
 	ListEnvironmentMembers(ctx context.Context, environmentID uuid.UUID) ([]EnvironmentMember, error)
+	// ListEnvironmentsBySecretGroup returns all environments for a given secret group, ordered by creation time.
+	// Used to display environments within a group context.
 	ListEnvironmentsBySecretGroup(ctx context.Context, secretGroupID uuid.UUID) ([]Environment, error)
+	// ListEnvironmentsWithMember returns all environments a user is a member of within a secret group and organization.
+	// Used to show environments accessible to a user for a given group/org context.
 	ListEnvironmentsWithMember(ctx context.Context, arg ListEnvironmentsWithMemberParams) ([]ListEnvironmentsWithMemberRow, error)
+	// ListMembersOfEnvironment returns all members and their roles for a given environment.
+	// Used to manage and display environment membership and permissions.
 	ListMembersOfEnvironment(ctx context.Context, environmentID uuid.UUID) ([]ListMembersOfEnvironmentRow, error)
+	// RemoveEnvironmentMember removes a user from an environment.
+	// Used to revoke access and permissions for a user in an environment.
 	RemoveEnvironmentMember(ctx context.Context, arg RemoveEnvironmentMemberParams) error
+	// UpdateEnvironment updates the name and updated_at timestamp of an environment.
+	// Used to rename environments and track modification time.
 	UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) (Environment, error)
 }
 

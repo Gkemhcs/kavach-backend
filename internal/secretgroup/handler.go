@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
-	environmentdb "github.com/Gkemhcs/kavach-backend/internal/environment/gen"
+	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
+
 	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
-	"github.com/Gkemhcs/kavach-backend/internal/types"
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -17,17 +17,16 @@ import (
 // SecretGroupHandler handles HTTP requests for secret groups.
 // Acts as the controller for secret group-related API endpoints.
 type SecretGroupHandler struct {
-	service          *SecretGroupService
-	orgGetterService types.OrganizationGetter
-	logger           *logrus.Logger
+	service *SecretGroupService
+
+	logger *logrus.Logger
 }
 
 // NewSecretGroupHandler creates a new SecretGroupHandler.
 // Used to inject dependencies and enable testability.
-func NewSecretGroupHandler(service *SecretGroupService, logger *logrus.Logger, orgGetter types.OrganizationGetter) *SecretGroupHandler {
+func NewSecretGroupHandler(service *SecretGroupService, logger *logrus.Logger) *SecretGroupHandler {
 	return &SecretGroupHandler{
 		service,
-		orgGetter,
 		logger}
 }
 
@@ -35,7 +34,7 @@ func NewSecretGroupHandler(service *SecretGroupService, logger *logrus.Logger, o
 // Centralizes route registration for maintainability and security.
 func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 	orgGroup *gin.RouterGroup,
-	environmentRepo environmentdb.Querier,
+	environmentHandler *environment.EnvironmentHandler,
 	jwtMiddleware gin.HandlerFunc) {
 	// Register under /organizations/:orgID/secret-groups
 	secretGroup := orgGroup.Group(":orgID/secret-groups")
@@ -50,9 +49,6 @@ func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 		secretGroup.DELETE(":groupID", handler.Delete)
 	}
 
-	// Register environment routes under /organizations/:orgID/secret-groups/:groupID/environments
-	enviromentService := environment.NewEnvironmentService(environmentRepo, handler.logger)
-	environmentHandler := environment.NewEnvironmentHandler(enviromentService, handler.logger)
 	environment.RegisterEnvironmentRoutes(environmentHandler, secretGroup, jwtMiddleware)
 }
 
@@ -65,6 +61,15 @@ func ToSecretGroupResponse(secretgroup *secretgroupdb.SecretGroup) SecretGroupRe
 		OrganizationID: secretgroup.OrganizationID.String(),
 		CreatedAt:      secretgroup.CreatedAt,
 		UpdatedAt:      secretgroup.UpdatedAt,
+	}
+}
+
+func ToSecretGroupRowResponse(secretgroup iam_db.ListAccessibleSecretGroupsRow) ListAccessibleSecretGroupsRow {
+	return ListAccessibleSecretGroupsRow{
+		ID:               secretgroup.ID.UUID.String(),
+		SecretGroupName:  secretgroup.Name,
+		OrganizationName: secretgroup.OrganizationName,
+		Role:             string(secretgroup.Role),
 	}
 }
 
@@ -124,14 +129,19 @@ func (h *SecretGroupHandler) List(c *gin.Context) {
 func (h *SecretGroupHandler) ListMySecretGroups(c *gin.Context) {
 	userID := c.GetString("user_id")
 	orgId := c.Param("orgID")
-	h.logger.Info(orgId,userID)
+	h.logger.Info(orgId, userID)
 	groups, err := h.service.ListMySecretGroups(c.Request.Context(), orgId, userID)
 	if err != nil {
 		h.logger.Error("ListMySecretGroups error: ", err)
 		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not list secret groups")
 		return
 	}
-	utils.RespondSuccess(c, http.StatusOK, groups)
+	var listMyGroups []ListAccessibleSecretGroupsRow
+	for _, group := range groups {
+		listMyGroups = append(listMyGroups, ToSecretGroupRowResponse(group))
+	}
+
+	utils.RespondSuccess(c, http.StatusOK, listMyGroups)
 }
 
 // Get handles GET /org/:orgID/secret-group/:groupID

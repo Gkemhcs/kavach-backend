@@ -22,6 +22,8 @@ type AddOrgMemberParams struct {
 	Role   RoleType  `json:"role"`
 }
 
+// AddOrgMember adds a user as a member to an organization with a specific role.
+// Used to grant access and permissions to users for an organization.
 func (q *Queries) AddOrgMember(ctx context.Context, arg AddOrgMemberParams) error {
 	_, err := q.db.ExecContext(ctx, addOrgMember, arg.OrgID, arg.UserID, arg.Role)
 	return err
@@ -37,6 +39,8 @@ type GetOrgMemberParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
+// GetOrgMember fetches a specific member of an organization by user ID.
+// Used to check membership and permissions for a user in an organization.
 func (q *Queries) GetOrgMember(ctx context.Context, arg GetOrgMemberParams) (OrgMember, error) {
 	row := q.db.QueryRowContext(ctx, getOrgMember, arg.OrgID, arg.UserID)
 	var i OrgMember
@@ -49,6 +53,8 @@ SELECT org_id, user_id, role FROM org_members
 WHERE org_id = $1
 `
 
+// ListOrgMembers returns all members of a given organization.
+// Used to display or manage all users with access to an organization.
 func (q *Queries) ListOrgMembers(ctx context.Context, orgID uuid.UUID) ([]OrgMember, error) {
 	rows, err := q.db.QueryContext(ctx, listOrgMembers, orgID)
 	if err != nil {
@@ -82,6 +88,8 @@ type RemoveOrgMemberParams struct {
 	UserID uuid.UUID `json:"user_id"`
 }
 
+// RemoveOrgMember removes a user from an organization.
+// Used to revoke access and permissions for a user in an organization.
 func (q *Queries) RemoveOrgMember(ctx context.Context, arg RemoveOrgMemberParams) error {
 	_, err := q.db.ExecContext(ctx, removeOrgMember, arg.OrgID, arg.UserID)
 	return err

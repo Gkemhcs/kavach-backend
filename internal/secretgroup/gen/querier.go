@@ -11,17 +11,41 @@ import (
 )
 
 type Querier interface {
+	// AddSecretGroupMember adds a user as a member to a secret group with a specific role.
+	// Used to grant access and permissions to users for a secret group.
 	AddSecretGroupMember(ctx context.Context, arg AddSecretGroupMemberParams) error
+	// CreateSecretGroup inserts a new secret group into the secret_groups table.
+	// Used when a user creates a new secret group within an organization.
 	CreateSecretGroup(ctx context.Context, arg CreateSecretGroupParams) (SecretGroup, error)
+	// DeleteSecretGroup removes a secret group by its ID.
+	// Used for secret group deletion and cleanup.
 	DeleteSecretGroup(ctx context.Context, id uuid.UUID) error
+	// GetSecretGroupByID fetches a secret group by its unique ID.
+	// Used for secret group detail views and internal lookups.
 	GetSecretGroupByID(ctx context.Context, id uuid.UUID) (SecretGroup, error)
+	// GetSecretGroupByName fetches a secret group by name and organization.
+	// Used to ensure secret group name uniqueness within an organization and for lookups.
 	GetSecretGroupByName(ctx context.Context, arg GetSecretGroupByNameParams) (SecretGroup, error)
+	// GetSecretGroupMember fetches a specific member of a secret group by user ID.
+	// Used to check membership and permissions for a user in a secret group.
 	GetSecretGroupMember(ctx context.Context, arg GetSecretGroupMemberParams) (SecretGroupMember, error)
+	// ListMembersOfSecretGroup returns all members and their roles for a given secret group.
+	// Used to manage and display secret group membership and permissions.
 	ListMembersOfSecretGroup(ctx context.Context, secretGroupID uuid.UUID) ([]ListMembersOfSecretGroupRow, error)
+	// ListSecretGroupMembers returns all members of a given secret group.
+	// Used to display or manage all users with access to a secret group.
 	ListSecretGroupMembers(ctx context.Context, secretGroupID uuid.UUID) ([]SecretGroupMember, error)
+	// ListSecretGroupsByOrg returns all secret groups for a given organization, ordered by creation time.
+	// Used to display secret groups within an organization context.
 	ListSecretGroupsByOrg(ctx context.Context, organizationID uuid.UUID) ([]SecretGroup, error)
+	// ListSecretGroupsWithMember returns all secret groups a user is a member of within an organization.
+	// Used to show secret groups accessible to a user for a given org context.
 	ListSecretGroupsWithMember(ctx context.Context, arg ListSecretGroupsWithMemberParams) ([]ListSecretGroupsWithMemberRow, error)
+	// RemoveSecretGroupMember removes a user from a secret group.
+	// Used to revoke access and permissions for a user in a secret group.
 	RemoveSecretGroupMember(ctx context.Context, arg RemoveSecretGroupMemberParams) error
+	// UpdateSecretGroup updates the name and updated_at timestamp of a secret group.
+	// Used to rename secret groups and track modification time.
 	UpdateSecretGroup(ctx context.Context, arg UpdateSecretGroupParams) (SecretGroup, error)
 }
 

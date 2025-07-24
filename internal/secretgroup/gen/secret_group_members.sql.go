@@ -22,6 +22,8 @@ type AddSecretGroupMemberParams struct {
 	Role          RoleType  `json:"role"`
 }
 
+// AddSecretGroupMember adds a user as a member to a secret group with a specific role.
+// Used to grant access and permissions to users for a secret group.
 func (q *Queries) AddSecretGroupMember(ctx context.Context, arg AddSecretGroupMemberParams) error {
 	_, err := q.db.ExecContext(ctx, addSecretGroupMember, arg.SecretGroupID, arg.UserID, arg.Role)
 	return err
@@ -37,6 +39,8 @@ type GetSecretGroupMemberParams struct {
 	UserID        uuid.UUID `json:"user_id"`
 }
 
+// GetSecretGroupMember fetches a specific member of a secret group by user ID.
+// Used to check membership and permissions for a user in a secret group.
 func (q *Queries) GetSecretGroupMember(ctx context.Context, arg GetSecretGroupMemberParams) (SecretGroupMember, error) {
 	row := q.db.QueryRowContext(ctx, getSecretGroupMember, arg.SecretGroupID, arg.UserID)
 	var i SecretGroupMember
@@ -49,6 +53,8 @@ SELECT secret_group_id, user_id, role FROM secret_group_members
 WHERE secret_group_id = $1
 `
 
+// ListSecretGroupMembers returns all members of a given secret group.
+// Used to display or manage all users with access to a secret group.
 func (q *Queries) ListSecretGroupMembers(ctx context.Context, secretGroupID uuid.UUID) ([]SecretGroupMember, error) {
 	rows, err := q.db.QueryContext(ctx, listSecretGroupMembers, secretGroupID)
 	if err != nil {
@@ -82,6 +88,8 @@ type RemoveSecretGroupMemberParams struct {
 	UserID        uuid.UUID `json:"user_id"`
 }
 
+// RemoveSecretGroupMember removes a user from a secret group.
+// Used to revoke access and permissions for a user in a secret group.
 func (q *Queries) RemoveSecretGroupMember(ctx context.Context, arg RemoveSecretGroupMemberParams) error {
 	_, err := q.db.ExecContext(ctx, removeSecretGroupMember, arg.SecretGroupID, arg.UserID)
 	return err

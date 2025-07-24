@@ -22,6 +22,8 @@ type AddEnvironmentMemberParams struct {
 	Role          RoleType  `json:"role"`
 }
 
+// AddEnvironmentMember adds a user as a member to an environment with a specific role.
+// Used to grant access and permissions to users for an environment.
 func (q *Queries) AddEnvironmentMember(ctx context.Context, arg AddEnvironmentMemberParams) error {
 	_, err := q.db.ExecContext(ctx, addEnvironmentMember, arg.EnvironmentID, arg.UserID, arg.Role)
 	return err
@@ -37,6 +39,8 @@ type GetEnvironmentMemberParams struct {
 	UserID        uuid.UUID `json:"user_id"`
 }
 
+// GetEnvironmentMember fetches a specific member of an environment by user ID.
+// Used to check membership and permissions for a user in an environment.
 func (q *Queries) GetEnvironmentMember(ctx context.Context, arg GetEnvironmentMemberParams) (EnvironmentMember, error) {
 	row := q.db.QueryRowContext(ctx, getEnvironmentMember, arg.EnvironmentID, arg.UserID)
 	var i EnvironmentMember
@@ -49,6 +53,8 @@ SELECT environment_id, user_id, role FROM environment_members
 WHERE environment_id = $1
 `
 
+// ListEnvironmentMembers returns all members of a given environment.
+// Used to display or manage all users with access to an environment.
 func (q *Queries) ListEnvironmentMembers(ctx context.Context, environmentID uuid.UUID) ([]EnvironmentMember, error) {
 	rows, err := q.db.QueryContext(ctx, listEnvironmentMembers, environmentID)
 	if err != nil {
@@ -82,6 +88,8 @@ type RemoveEnvironmentMemberParams struct {
 	UserID        uuid.UUID `json:"user_id"`
 }
 
+// RemoveEnvironmentMember removes a user from an environment.
+// Used to revoke access and permissions for a user in an environment.
 func (q *Queries) RemoveEnvironmentMember(ctx context.Context, arg RemoveEnvironmentMemberParams) error {
 	_, err := q.db.ExecContext(ctx, removeEnvironmentMember, arg.EnvironmentID, arg.UserID)
 	return err

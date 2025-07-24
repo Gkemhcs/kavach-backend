@@ -5,6 +5,8 @@ import (
 	"database/sql"
 
 	environmentdb "github.com/Gkemhcs/kavach-backend/internal/environment/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/iam"
+	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
 
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
@@ -17,12 +19,13 @@ import (
 type EnvironmentService struct {
 	repo   environmentdb.Querier
 	logger *logrus.Logger
+	iamService iam.IamService
 }
 
 // NewEnvironmentService creates a new EnvironmentService.
 // Used to inject dependencies and enable testability.
-func NewEnvironmentService(repo environmentdb.Querier, logger *logrus.Logger) *EnvironmentService {
-	return &EnvironmentService{repo, logger}
+func NewEnvironmentService(repo environmentdb.Querier, logger *logrus.Logger,iamService iam.IamService) *EnvironmentService {
+	return &EnvironmentService{repo, logger,iamService}
 }
 
 // CreateEnvironment creates a new environment under a secret group.
@@ -52,12 +55,26 @@ func (s *EnvironmentService) CreateEnvironment(ctx context.Context, req CreateEn
 		return nil, appErrors.ErrInternalServer
 	}
 
-	addEnvironmentMemberParams := environmentdb.AddEnvironmentMemberParams{
-		EnvironmentID: env.ID,
-		UserID:        uuid.MustParse(req.UserId),
-		Role:          environmentdb.RoleTypeOwner,
+	
+	createBindingParams:=iam.CreateRoleBindingRequest{
+		UserID: uuid.MustParse(req.UserId),
+		Role:"owner",
+		ResourceType: "environment",
+		ResourceID: env.ID,
+		OrganizationID: uuid.MustParse(req.Organization),
+		SecretGroupID: uuid.NullUUID{
+			UUID: uuid.MustParse(req.SecretGroup),
+			Valid: true,
+		},
+		EnvironmentID: uuid.NullUUID{
+			UUID: env.ID,
+			Valid: true,
+		},
+
 	}
-	err = s.repo.AddEnvironmentMember(ctx, addEnvironmentMemberParams)
+	_,err=s.iamService.CreateRoleBinding(ctx,createBindingParams)
+	
+	
 	if err != nil {
 
 		return nil, err
@@ -72,6 +89,7 @@ func (s *EnvironmentService) ListEnvironments(ctx context.Context, userID, orgID
 	if err != nil {
 		return nil, appErrors.ErrInternalServer
 	}
+	
 	envs, err := s.repo.ListEnvironmentsBySecretGroup(ctx, groupUUID)
 	if err != nil {
 		return nil, appErrors.ErrInternalServer
@@ -80,14 +98,11 @@ func (s *EnvironmentService) ListEnvironments(ctx context.Context, userID, orgID
 }
 
 // ListMyEnvironments lists all environments where the user is a member.
-func (s *EnvironmentService) ListMyEnvironments(ctx context.Context, userID, groupID, orgID string) ([]environmentdb.ListEnvironmentsWithMemberRow, error) {
+func (s *EnvironmentService) ListMyEnvironments(ctx context.Context, userID, groupID, orgID string) ([]iam_db.ListAccessibleEnvironmentsRow, error) {
 	s.logger.Infof("Listing environments for user_id=%s", userID)
-	params := environmentdb.ListEnvironmentsWithMemberParams{
-		UserID:         uuid.MustParse(userID),
-		SecretGroupID:  uuid.MustParse(groupID),
-		OrganizationID: uuid.MustParse(orgID),
-	}
-	envs, err := s.repo.ListEnvironmentsWithMember(ctx, params)
+	
+	envs,err:=s.iamService.ListAccessibleEnvironments(ctx,userID,orgID,groupID)
+	
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +127,16 @@ func (s *EnvironmentService) GetEnvironment(ctx context.Context, userID, orgID, 
 }
 
 // GetEnvironmentByName gets a specific environment by environment Name under a secret group.
-func (s *EnvironmentService) GetEnvironmentByName(ctx context.Context, environmentName, groupID string) (*environmentdb.Environment, error) {
-	params := environmentdb.GetEnvironmentByNameParams{
-		Name:          environmentName,
-		SecretGroupID: uuid.MustParse(groupID),
+func (s *EnvironmentService) GetEnvironmentByName(ctx context.Context, environmentName, groupID string) (*environmentdb.GetEnvironmentByNameRow, error) {
+	groupId,err:=uuid.Parse(groupID)
+	if err!=nil{
+		return nil,err 
 	}
-	environment, err := s.repo.GetEnvironmentByName(ctx, params)
+	params:=environmentdb.GetEnvironmentByNameParams{
+		SecretGroupID: groupId,
+		Name: environmentName,
+	}
+	environment, err := s.repo.GetEnvironmentByName(ctx,params)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, appErrors.ErrEnvironmentNotFound

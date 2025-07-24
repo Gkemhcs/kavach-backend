@@ -29,6 +29,11 @@ SELECT * FROM users
 WHERE provider = $1 AND provider_id = $2
 LIMIT 1;
 
+
+-- name: GetUserByGithubUserName :one
+SELECT * FROM users
+WHERE name = $1 and provider = 'github';
+
 -- GetUserByID fetches a user by their unique ID.
 -- Used for user profile lookups and internal references.
 -- name: GetUserByID :one

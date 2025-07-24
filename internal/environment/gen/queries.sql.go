@@ -8,6 +8,7 @@ package environmentdb
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -24,6 +25,8 @@ type CreateEnvironmentParams struct {
 	Description   sql.NullString `json:"description"`
 }
 
+// CreateEnvironment inserts a new environment into the environments table.
+// Used when a user creates a new environment within a secret group.
 func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (Environment, error) {
 	row := q.db.QueryRowContext(ctx, createEnvironment, arg.Name, arg.SecretGroupID, arg.Description)
 	var i Environment
@@ -42,6 +45,8 @@ const deleteEnvironment = `-- name: DeleteEnvironment :exec
 DELETE FROM environments WHERE id = $1
 `
 
+// DeleteEnvironment removes an environment by its ID.
+// Used for environment deletion and cleanup.
 func (q *Queries) DeleteEnvironment(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteEnvironment, id)
 	return err
@@ -51,6 +56,8 @@ const getEnvironmentByID = `-- name: GetEnvironmentByID :one
 SELECT id, name, secret_group_id, created_at, updated_at, description FROM environments WHERE id = $1
 `
 
+// GetEnvironmentByID fetches an environment by its unique ID.
+// Used for environment detail views and internal lookups.
 func (q *Queries) GetEnvironmentByID(ctx context.Context, id uuid.UUID) (Environment, error) {
 	row := q.db.QueryRowContext(ctx, getEnvironmentByID, id)
 	var i Environment
@@ -66,21 +73,44 @@ func (q *Queries) GetEnvironmentByID(ctx context.Context, id uuid.UUID) (Environ
 }
 
 const getEnvironmentByName = `-- name: GetEnvironmentByName :one
-SELECT id, name, secret_group_id, created_at, updated_at, description FROM environments WHERE name = $1 and secret_group_id = $2
+SELECT 
+    e.id AS id,
+    e.name AS name,
+    e.secret_group_id AS secret_group_id,
+    sg.organization_id AS organization_id,
+    e.created_at AS created_at,
+    e.updated_at AS updated_at,
+    e.description AS description
+FROM environments e
+INNER JOIN secret_groups sg ON e.secret_group_id = sg.id
+WHERE  e.secret_group_id = $1 and e.name = $2
 `
 
 type GetEnvironmentByNameParams struct {
-	Name          string    `json:"name"`
 	SecretGroupID uuid.UUID `json:"secret_group_id"`
+	Name          string    `json:"name"`
 }
 
-func (q *Queries) GetEnvironmentByName(ctx context.Context, arg GetEnvironmentByNameParams) (Environment, error) {
-	row := q.db.QueryRowContext(ctx, getEnvironmentByName, arg.Name, arg.SecretGroupID)
-	var i Environment
+type GetEnvironmentByNameRow struct {
+	ID             uuid.UUID      `json:"id"`
+	Name           string         `json:"name"`
+	SecretGroupID  uuid.UUID      `json:"secret_group_id"`
+	OrganizationID uuid.UUID      `json:"organization_id"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	Description    sql.NullString `json:"description"`
+}
+
+// GetEnvironmentByName fetches an environment by name and secret group.
+// Used to ensure environment name uniqueness within a group and for lookups.
+func (q *Queries) GetEnvironmentByName(ctx context.Context, arg GetEnvironmentByNameParams) (GetEnvironmentByNameRow, error) {
+	row := q.db.QueryRowContext(ctx, getEnvironmentByName, arg.SecretGroupID, arg.Name)
+	var i GetEnvironmentByNameRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.SecretGroupID,
+		&i.OrganizationID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Description,
@@ -92,6 +122,8 @@ const listEnvironmentsBySecretGroup = `-- name: ListEnvironmentsBySecretGroup :m
 SELECT id, name, secret_group_id, created_at, updated_at, description FROM environments WHERE secret_group_id = $1 ORDER BY created_at DESC
 `
 
+// ListEnvironmentsBySecretGroup returns all environments for a given secret group, ordered by creation time.
+// Used to display environments within a group context.
 func (q *Queries) ListEnvironmentsBySecretGroup(ctx context.Context, secretGroupID uuid.UUID) ([]Environment, error) {
 	rows, err := q.db.QueryContext(ctx, listEnvironmentsBySecretGroup, secretGroupID)
 	if err != nil {
@@ -135,6 +167,8 @@ type UpdateEnvironmentParams struct {
 	Name string    `json:"name"`
 }
 
+// UpdateEnvironment updates the name and updated_at timestamp of an environment.
+// Used to rename environments and track modification time.
 func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) (Environment, error) {
 	row := q.db.QueryRowContext(ctx, updateEnvironment, arg.ID, arg.Name)
 	var i Environment

@@ -42,3 +42,21 @@ packages:
     engine: "postgresql"
     emit_json_tags: true
     emit_interface: true
+
+  - name: "iam_db"
+    path: "internal/iam/gen"
+    queries:
+    - "internal/iam/queries.sql"
+    - "internal/iam/permissions_management.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true
+  - name: "groupsdb"
+    path: "internal/groups/gen"
+    queries:
+    - "internal/groups/queries.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true

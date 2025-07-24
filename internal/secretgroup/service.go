@@ -6,6 +6,8 @@ import (
 	"errors"
 
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
+	"github.com/Gkemhcs/kavach-backend/internal/iam"
+	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
 	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/google/uuid"
@@ -15,14 +17,15 @@ import (
 // SecretGroupService provides business logic for secret groups.
 // Encapsulates all secret group-related operations and validation.
 type SecretGroupService struct {
-	repo   secretgroupdb.Querier
-	logger *logrus.Logger
+	repo       secretgroupdb.Querier
+	logger     *logrus.Logger
+	iamService iam.IamService
 }
 
 // NewSecretGroupService creates a new SecretGroupService.
 // Used to inject dependencies and enable testability.
-func NewSecretGroupService(repo secretgroupdb.Querier, logger *logrus.Logger) *SecretGroupService {
-	return &SecretGroupService{repo, logger}
+func NewSecretGroupService(repo secretgroupdb.Querier, logger *logrus.Logger, iamService iam.IamService) *SecretGroupService {
+	return &SecretGroupService{repo, logger, iamService}
 }
 
 // CreateSecretGroup creates a new secret group under an organization.
@@ -49,12 +52,21 @@ func (s *SecretGroupService) CreateSecretGroup(ctx context.Context, req CreateSe
 	if err != nil {
 		return nil, appErrors.ErrInternalServer
 	}
-	addSecretGroupMemberParams := secretgroupdb.AddSecretGroupMemberParams{
-		SecretGroupID: group.ID,
-		UserID:        userID,
-		Role:          secretgroupdb.RoleTypeOwner,
+
+	createBindingRequest := iam.CreateRoleBindingRequest{
+		UserID:         userID,
+		Role:           "owner",
+		ResourceType:   "secret_group",
+		ResourceID:     group.ID,
+		OrganizationID: orgUUID,
+		SecretGroupID: uuid.NullUUID{
+			UUID:  group.ID,
+			Valid: true,
+		},
+		EnvironmentID: uuid.NullUUID{Valid: false},
 	}
-	err = s.repo.AddSecretGroupMember(ctx, addSecretGroupMemberParams)
+	_, err = s.iamService.CreateRoleBinding(ctx, createBindingRequest)
+
 	if err != nil {
 		return nil, err
 	}
@@ -76,15 +88,10 @@ func (s *SecretGroupService) ListSecretGroups(ctx context.Context, userID, orgID
 }
 
 // ListMySecretGroups lists all secret groups where the user is a member.
-func (s *SecretGroupService) ListMySecretGroups(ctx context.Context, orgId, userID string) ([]secretgroupdb.ListSecretGroupsWithMemberRow, error) {
+func (s *SecretGroupService) ListMySecretGroups(ctx context.Context, orgId, userID string) ([]iam_db.ListAccessibleSecretGroupsRow, error) {
 	s.logger.Infof("Listing secret groups for user_id=%s", userID)
 
-	params := secretgroupdb.ListSecretGroupsWithMemberParams{
-		UserID:         uuid.MustParse(userID),
-		OrganizationID: uuid.MustParse(orgId),
-	}
-
-	groups, err := s.repo.ListSecretGroupsWithMember(ctx, params)
+	groups, err := s.iamService.ListAccessibleSecretGroups(ctx, userID, orgId)
 	if err != nil {
 		return nil, err
 	}

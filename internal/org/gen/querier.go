@@ -11,17 +11,41 @@ import (
 )
 
 type Querier interface {
+	// AddOrgMember adds a user as a member to an organization with a specific role.
+	// Used to grant access and permissions to users for an organization.
 	AddOrgMember(ctx context.Context, arg AddOrgMemberParams) error
+	// CreateOrganization inserts a new organization into the organizations table.
+	// Used when a user creates a new organization.
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	// DeleteOrganization removes an organization by its ID.
+	// Used for organization deletion and cleanup.
 	DeleteOrganization(ctx context.Context, id uuid.UUID) error
+	// GetOrgMember fetches a specific member of an organization by user ID.
+	// Used to check membership and permissions for a user in an organization.
 	GetOrgMember(ctx context.Context, arg GetOrgMemberParams) (OrgMember, error)
+	// GetOrganizationByID fetches an organization by its unique ID.
+	// Used for organization detail views and internal lookups.
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
-	GetOrganizationByName(ctx context.Context, arg GetOrganizationByNameParams) (Organization, error)
+	// GetOrganizationByName fetches an organization by name and owner.
+	// Used to ensure organization name uniqueness within a user's organizations and for lookups.
+	GetOrganizationByName(ctx context.Context, name string) (Organization, error)
+	// ListMembersOfOrganization returns all members and their roles for a given organization.
+	// Used to manage and display organization membership and permissions.
 	ListMembersOfOrganization(ctx context.Context, orgID uuid.UUID) ([]ListMembersOfOrganizationRow, error)
+	// ListOrgMembers returns all members of a given organization.
+	// Used to display or manage all users with access to an organization.
 	ListOrgMembers(ctx context.Context, orgID uuid.UUID) ([]OrgMember, error)
+	// ListOrganizationsByOwner returns all organizations for a given owner, ordered by creation time.
+	// Used to display organizations within a user's context.
 	ListOrganizationsByOwner(ctx context.Context, ownerID uuid.UUID) ([]Organization, error)
+	// ListOrganizationsWithMember returns all organizations a user is a member of.
+	// Used to show organizations accessible to a user for a given context.
 	ListOrganizationsWithMember(ctx context.Context, userID uuid.UUID) ([]ListOrganizationsWithMemberRow, error)
+	// RemoveOrgMember removes a user from an organization.
+	// Used to revoke access and permissions for a user in an organization.
 	RemoveOrgMember(ctx context.Context, arg RemoveOrgMemberParams) error
+	// UpdateOrganization updates the name and updated_at timestamp of an organization.
+	// Used to rename organizations and track modification time.
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error)
 }
 

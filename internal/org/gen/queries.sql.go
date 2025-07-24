@@ -24,6 +24,8 @@ type CreateOrganizationParams struct {
 	OwnerID     uuid.UUID      `json:"owner_id"`
 }
 
+// CreateOrganization inserts a new organization into the organizations table.
+// Used when a user creates a new organization.
 func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error) {
 	row := q.db.QueryRowContext(ctx, createOrganization, arg.Name, arg.Description, arg.OwnerID)
 	var i Organization
@@ -42,6 +44,8 @@ const deleteOrganization = `-- name: DeleteOrganization :exec
 DELETE FROM organizations WHERE id = $1
 `
 
+// DeleteOrganization removes an organization by its ID.
+// Used for organization deletion and cleanup.
 func (q *Queries) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteOrganization, id)
 	return err
@@ -51,6 +55,8 @@ const getOrganizationByID = `-- name: GetOrganizationByID :one
 SELECT id, name, description, owner_id, created_at, updated_at FROM organizations WHERE id = $1
 `
 
+// GetOrganizationByID fetches an organization by its unique ID.
+// Used for organization detail views and internal lookups.
 func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error) {
 	row := q.db.QueryRowContext(ctx, getOrganizationByID, id)
 	var i Organization
@@ -66,16 +72,13 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 }
 
 const getOrganizationByName = `-- name: GetOrganizationByName :one
-SELECT id, name, description, owner_id, created_at, updated_at FROM organizations WHERE name = $1 and owner_id = $2
+SELECT id, name, description, owner_id, created_at, updated_at FROM organizations WHERE name = $1
 `
 
-type GetOrganizationByNameParams struct {
-	Name    string    `json:"name"`
-	OwnerID uuid.UUID `json:"owner_id"`
-}
-
-func (q *Queries) GetOrganizationByName(ctx context.Context, arg GetOrganizationByNameParams) (Organization, error) {
-	row := q.db.QueryRowContext(ctx, getOrganizationByName, arg.Name, arg.OwnerID)
+// GetOrganizationByName fetches an organization by name and owner.
+// Used to ensure organization name uniqueness within a user's organizations and for lookups.
+func (q *Queries) GetOrganizationByName(ctx context.Context, name string) (Organization, error) {
+	row := q.db.QueryRowContext(ctx, getOrganizationByName, name)
 	var i Organization
 	err := row.Scan(
 		&i.ID,
@@ -92,6 +95,8 @@ const listOrganizationsByOwner = `-- name: ListOrganizationsByOwner :many
 SELECT id, name, description, owner_id, created_at, updated_at FROM organizations WHERE owner_id = $1 ORDER BY created_at DESC
 `
 
+// ListOrganizationsByOwner returns all organizations for a given owner, ordered by creation time.
+// Used to display organizations within a user's context.
 func (q *Queries) ListOrganizationsByOwner(ctx context.Context, ownerID uuid.UUID) ([]Organization, error) {
 	rows, err := q.db.QueryContext(ctx, listOrganizationsByOwner, ownerID)
 	if err != nil {
@@ -135,6 +140,8 @@ type UpdateOrganizationParams struct {
 	Name string    `json:"name"`
 }
 
+// UpdateOrganization updates the name and updated_at timestamp of an organization.
+// Used to rename organizations and track modification time.
 func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error) {
 	row := q.db.QueryRowContext(ctx, updateOrganization, arg.ID, arg.Name)
 	var i Organization

@@ -14,15 +14,23 @@ type CreateEnvironmentRequest struct {
 	UserId       string `json:"user_id"`                 // User ID of the creator
 }
 
+type ListAccessibleEnvironmentsRow struct {
+	ID              string `json:"environment_id"`
+	Name            string `json:"name"`
+	SecretGroupName string `json:"secret_group_name"`
+	Role            string `json:"role"`
+}
+
 // EnvironmentResponseData is the response body for environment data.
 // Used to serialize environment data for API responses.
 type EnvironmentResponseData struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	SecretGroupID string    `json:"secret_group_id"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	Description   *string   `json:"description"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	SecretGroupID  string    `json:"secret_group_id"`
+	OrganizationID string    `json:"organization_id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	Description    *string   `json:"description"`
 }
 
 // UpdateEnvironmentRequest is the request body for updating an environment.

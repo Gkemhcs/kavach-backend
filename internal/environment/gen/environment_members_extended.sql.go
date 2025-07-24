@@ -43,6 +43,8 @@ type ListEnvironmentsWithMemberRow struct {
 	Role            RoleType  `json:"role"`
 }
 
+// ListEnvironmentsWithMember returns all environments a user is a member of within a secret group and organization.
+// Used to show environments accessible to a user for a given group/org context.
 func (q *Queries) ListEnvironmentsWithMember(ctx context.Context, arg ListEnvironmentsWithMemberParams) ([]ListEnvironmentsWithMemberRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEnvironmentsWithMember, arg.UserID, arg.SecretGroupID, arg.OrganizationID)
 	if err != nil {
@@ -92,6 +94,8 @@ type ListMembersOfEnvironmentRow struct {
 	EnvironmentName string    `json:"environment_name"`
 }
 
+// ListMembersOfEnvironment returns all members and their roles for a given environment.
+// Used to manage and display environment membership and permissions.
 func (q *Queries) ListMembersOfEnvironment(ctx context.Context, environmentID uuid.UUID) ([]ListMembersOfEnvironmentRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMembersOfEnvironment, environmentID)
 	if err != nil {

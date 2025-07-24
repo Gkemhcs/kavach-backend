@@ -14,6 +14,13 @@ type CreateSecretGroupRequest struct {
 	OrganizationID   string `json:"org_id"`                  // Organization ID
 }
 
+type ListAccessibleSecretGroupsRow struct {
+	ID               string `json:"id"`
+	SecretGroupName  string  `json:"name"`
+	OrganizationName string  `json:"organization_name"`
+	Role             string  `json:"role"`
+}
+
 // UpdateSecretGroupRequest is the request body for updating a secret group.
 // Used by the API to validate and parse secret group update requests.
 type UpdateSecretGroupRequest struct {

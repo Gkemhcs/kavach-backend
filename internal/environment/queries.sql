@@ -13,7 +13,18 @@ SELECT * FROM environments WHERE id = $1;
 -- GetEnvironmentByName fetches an environment by name and secret group.
 -- Used to ensure environment name uniqueness within a group and for lookups.
 -- name: GetEnvironmentByName :one
-SELECT * FROM environments WHERE name = $1 and secret_group_id = $2 ;
+SELECT 
+    e.id AS id,
+    e.name AS name,
+    e.secret_group_id AS secret_group_id,
+    sg.organization_id AS organization_id,
+    e.created_at AS created_at,
+    e.updated_at AS updated_at,
+    e.description AS description
+FROM environments e
+INNER JOIN secret_groups sg ON e.secret_group_id = sg.id
+WHERE  e.secret_group_id = $1 and e.name = $2;
+
 
 -- UpdateEnvironment updates the name and updated_at timestamp of an environment.
 -- Used to rename environments and track modification time.

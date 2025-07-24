@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	environmentdb "github.com/Gkemhcs/kavach-backend/internal/environment/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/environment"
+	"github.com/Gkemhcs/kavach-backend/internal/groups"
+
 	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	orgdb "github.com/Gkemhcs/kavach-backend/internal/org/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/secretgroup"
-	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
+
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -34,17 +36,15 @@ func NewOrganizationHandler(service *OrganizationService,
 // Centralizes route registration for maintainability and security.
 func RegisterOrganizationRoutes(handler *OrganizationHandler,
 	routerGroup *gin.RouterGroup,
-	secretGroupRepo secretgroupdb.Querier,
-	environmentRepo environmentdb.Querier,
+	secretGroupHandler *secretgroup.SecretGroupHandler,
+	environmentHandler *environment.EnvironmentHandler,
+	userGroupHandler *groups.UserGroupHandler,
 	jwtMiddleware gin.HandlerFunc) {
 	orgGroup := routerGroup.Group("/organizations")
 	orgGroup.Use(jwtMiddleware)
 
-	// Register secret group routes FIRST to avoid Gin wildcard conflicts
-	secretGroupService := secretgroup.NewSecretGroupService(secretGroupRepo, handler.logger)
-	secretGroupHandler := secretgroup.NewSecretGroupHandler(secretGroupService, handler.logger, handler.service)
-	secretgroup.RegisterSecretGroupRoutes(secretGroupHandler, orgGroup, environmentRepo, jwtMiddleware)
-
+	secretgroup.RegisterSecretGroupRoutes(secretGroupHandler, orgGroup, environmentHandler, jwtMiddleware)
+	groups.RegisterUserGroupRoutes(userGroupHandler,orgGroup,jwtMiddleware)
 	// Now register organization routes
 	orgGroup.GET("/by-name/:orgName", handler.GetOrganizationByName)
 	orgGroup.DELETE("/by-name/:orgName", handler.DeleteOrganization)
@@ -66,14 +66,7 @@ func ToOrganizationResponse(org *orgdb.Organization) OrganizationResponseData {
 	}
 }
 
-// ToOrganisationMemberResponse converts a DB row to API response for organization membership.
-func ToOrganisationMemberResponse(org orgdb.ListOrganizationsWithMemberRow) ListOrganizationsWithMemberRow {
-	return ListOrganizationsWithMemberRow{
-		OrgID: org.OrgID,
-		Name:  org.Name,
-		Role:  string(org.Role),
-	}
-}
+
 
 // toNullableString safely converts sql.NullString to *string for JSON marshalling.
 func toNullableString(ns sql.NullString) *string {
@@ -133,19 +126,16 @@ func (h *OrganizationHandler) ListMyOrganizations(c *gin.Context) {
 		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not list organizations")
 		return
 	}
-	var respData []ListOrganizationsWithMemberRow
-	for _, org := range orgs {
-		respData = append(respData, ToOrganisationMemberResponse(org))
-	}
-	utils.RespondSuccess(c, http.StatusOK, respData)
+	
+	utils.RespondSuccess(c, http.StatusOK, orgs)
 }
 
 // GetOrganizationByName handles GET /organizations/by-name/:orgName
 // Gets a specific organization by name for the user.
 func (h *OrganizationHandler) GetOrganizationByName(c *gin.Context) {
 	orgName := c.Param("orgName")
-	userID := c.GetString("user_id")
-	org, err := h.service.GetOrganizationByName(c.Request.Context(), orgName, userID)
+	
+	org, err := h.service.GetOrganizationByName(c.Request.Context(), orgName)
 	if err == apiErrors.ErrOrganizationNotFound {
 		apiErr, _ := err.(*apiErrors.APIError)
 		h.logger.Errorf("organisation is not found with name %s", orgName)
@@ -199,10 +189,10 @@ func (h *OrganizationHandler) UpdateOrganization(c *gin.Context) {
 // DeleteOrganization handles DELETE /organizations/:id
 // Deletes an organization by name for the user.
 func (h *OrganizationHandler) DeleteOrganization(c *gin.Context) {
-	userID := c.GetString("user_id")
+	
 	orgName := c.Param("orgName")
 
-	org, err := h.service.GetOrganizationByName(c.Request.Context(), orgName, userID)
+	org, err := h.service.GetOrganizationByName(c.Request.Context(), orgName)
 	if err == apiErrors.ErrOrganizationNotFound {
 		apiErr, _ := err.(*apiErrors.APIError)
 		h.logger.Errorf("organisation is not found with name")

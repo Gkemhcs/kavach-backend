@@ -207,6 +207,20 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (s
 	return token, newRefreshToken, nil
 }
 
+func (s *AuthService) GetUserInfoByGithubUserName(ctx context.Context, userName string) (*userdb.User, error) {
+	user, err := s.userRepo.GetUserByGithubUserName(ctx, sql.NullString{
+		String: userName,
+		Valid:  true,
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperrors.ErrUserNotFound
+		}
+	}
+	return &user, nil
+
+}
+
 // createJwtParamsFromClaims creates CreateJwtParams from JWT claims (for refresh token flow)
 // This helper is used to avoid code duplication when generating tokens from claims.
 func (s *AuthService) createJwtParamsFromClaims(claims *jwt.Claims) jwt.CreateJwtParams {

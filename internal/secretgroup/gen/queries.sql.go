@@ -24,6 +24,8 @@ type CreateSecretGroupParams struct {
 	Description    sql.NullString `json:"description"`
 }
 
+// CreateSecretGroup inserts a new secret group into the secret_groups table.
+// Used when a user creates a new secret group within an organization.
 func (q *Queries) CreateSecretGroup(ctx context.Context, arg CreateSecretGroupParams) (SecretGroup, error) {
 	row := q.db.QueryRowContext(ctx, createSecretGroup, arg.Name, arg.OrganizationID, arg.Description)
 	var i SecretGroup
@@ -42,6 +44,8 @@ const deleteSecretGroup = `-- name: DeleteSecretGroup :exec
 DELETE FROM secret_groups WHERE id = $1
 `
 
+// DeleteSecretGroup removes a secret group by its ID.
+// Used for secret group deletion and cleanup.
 func (q *Queries) DeleteSecretGroup(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteSecretGroup, id)
 	return err
@@ -51,6 +55,8 @@ const getSecretGroupByID = `-- name: GetSecretGroupByID :one
 SELECT id, name, description, organization_id, created_at, updated_at FROM secret_groups WHERE id = $1
 `
 
+// GetSecretGroupByID fetches a secret group by its unique ID.
+// Used for secret group detail views and internal lookups.
 func (q *Queries) GetSecretGroupByID(ctx context.Context, id uuid.UUID) (SecretGroup, error) {
 	row := q.db.QueryRowContext(ctx, getSecretGroupByID, id)
 	var i SecretGroup
@@ -74,6 +80,8 @@ type GetSecretGroupByNameParams struct {
 	OrganizationID uuid.UUID `json:"organization_id"`
 }
 
+// GetSecretGroupByName fetches a secret group by name and organization.
+// Used to ensure secret group name uniqueness within an organization and for lookups.
 func (q *Queries) GetSecretGroupByName(ctx context.Context, arg GetSecretGroupByNameParams) (SecretGroup, error) {
 	row := q.db.QueryRowContext(ctx, getSecretGroupByName, arg.Name, arg.OrganizationID)
 	var i SecretGroup
@@ -92,6 +100,8 @@ const listSecretGroupsByOrg = `-- name: ListSecretGroupsByOrg :many
 SELECT id, name, description, organization_id, created_at, updated_at FROM secret_groups WHERE organization_id = $1 ORDER BY created_at DESC
 `
 
+// ListSecretGroupsByOrg returns all secret groups for a given organization, ordered by creation time.
+// Used to display secret groups within an organization context.
 func (q *Queries) ListSecretGroupsByOrg(ctx context.Context, organizationID uuid.UUID) ([]SecretGroup, error) {
 	rows, err := q.db.QueryContext(ctx, listSecretGroupsByOrg, organizationID)
 	if err != nil {
@@ -135,6 +145,8 @@ type UpdateSecretGroupParams struct {
 	Name string    `json:"name"`
 }
 
+// UpdateSecretGroup updates the name and updated_at timestamp of a secret group.
+// Used to rename secret groups and track modification time.
 func (q *Queries) UpdateSecretGroup(ctx context.Context, arg UpdateSecretGroupParams) (SecretGroup, error) {
 	row := q.db.QueryRowContext(ctx, updateSecretGroup, arg.ID, arg.Name)
 	var i SecretGroup
