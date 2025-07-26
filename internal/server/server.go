@@ -1,10 +1,12 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/Gkemhcs/kavach-backend/internal/auth"
 	"github.com/Gkemhcs/kavach-backend/internal/auth/jwt"
+	"github.com/Gkemhcs/kavach-backend/internal/authz"
 	"github.com/Gkemhcs/kavach-backend/internal/config"
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
 	"github.com/Gkemhcs/kavach-backend/internal/groups"
@@ -25,21 +27,46 @@ type Server struct {
 
 // SetupRoutes registers all API routes and middleware for the server.
 // This function centralizes route registration for maintainability.
-func (s *Server) SetupRoutes(authHandler *auth.AuthHandler, 
+func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,
 	iamHandler *iam.IamHandler,
-	orgHandler *org.OrganizationHandler, 
-	secretgroupHandler *secretgroup.SecretGroupHandler, 
-	environmentHandler *environment.EnvironmentHandler, 
+	orgHandler *org.OrganizationHandler,
+	secretgroupHandler *secretgroup.SecretGroupHandler,
+	environmentHandler *environment.EnvironmentHandler,
 	userGroupHandler *groups.UserGroupHandler,
-	jwter *jwt.Manager) {
+	jwter *jwt.Manager,
+	db *sql.DB,
+	cfg *config.Config) {
 	// Create API v1 router group
 	v1 := s.engine.Group("/api/v1")
+
+	// Prepare Postgres connection string from config
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
+
+	// Prepare authz config
+	authzConfig := &authz.Config{
+		DatabaseURL: dbURL,
+		TableName:   "casbin_rule",
+	}
+
+	// Initialize the authorization system with your main DB connection and config
+	authzSystem, err := authz.NewSystem(db, authzConfig, s.log)
+	if err != nil {
+		s.log.Fatalf("Failed to initialize authorization system: %v", err)
+	}
+
 	jwtMiddleware := middleware.JWTAuthMiddleware(jwter)
 
-	// Register auth routes
+	// Register auth routes FIRST (no middleware - these are public)
 	auth.RegisterAuthRoutes(authHandler, v1)
-	iam.RegisterIamRoutes(iamHandler,v1)
-	org.RegisterOrganizationRoutes(orgHandler, v1, secretgroupHandler, environmentHandler, userGroupHandler,jwtMiddleware)
+
+	// Create a new group for protected routes that need JWT + authorization
+	protected := v1.Group("")
+	protected.Use(jwtMiddleware)
+	protected.Use(authzSystem.Middleware.Authorize())
+
+	// Register all other routes under the protected group
+	iam.RegisterIamRoutes(iamHandler, protected)
+	org.RegisterOrganizationRoutes(orgHandler, protected, secretgroupHandler, environmentHandler, userGroupHandler, jwtMiddleware)
 	// Add other route groups here as needed
 	// Example: secrets.RegisterSecretRoutes(secretHandler, v1)
 	// Example: orgs.RegisterOrgRoutes(orgHandler, v1)

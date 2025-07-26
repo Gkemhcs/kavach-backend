@@ -58,36 +58,30 @@ func main() {
 	authHandler := auth.NewAuthHandler(authService, logger)
 
 	//UserGroup service and handler setup
-	userGroupService:=groups.NewUserGroupService(logger,groupsdb.New(dbConn),authService)
-	userGroupHandler:=groups.NewUserGroupHandler(logger,userGroupService)
+	userGroupService := groups.NewUserGroupService(logger, groupsdb.New(dbConn), authService)
+	userGroupHandler := groups.NewUserGroupHandler(logger, userGroupService)
 
-	//IamService setup 
+	//IamService setup
 
-	iamService:=iam.NewIamService(iam_db.New(dbConn),authService,userGroupService,logger)
-	iamHandler:=iam.NewIamHandler(*iamService,logger)
+	iamService := iam.NewIamService(iam_db.New(dbConn), authService, userGroupService, logger)
+	iamHandler := iam.NewIamHandler(*iamService, logger)
 	// Organization service and handler setup
-	orgService := org.NewOrganizationService(orgdb.New(dbConn), logger,*iamService)
+	orgService := org.NewOrganizationService(orgdb.New(dbConn), logger, *iamService)
 	orgHandler := org.NewOrganizationHandler(orgService, logger)
 
-	//SecretGroup service and handler setup 
-	groupService:=secretgroup.NewSecretGroupService(secretgroupdb.New(dbConn),logger,*iamService)
-	groupHandler:=secretgroup.NewSecretGroupHandler(groupService,logger)
+	//SecretGroup service and handler setup
+	groupService := secretgroup.NewSecretGroupService(secretgroupdb.New(dbConn), logger, *iamService)
+	groupHandler := secretgroup.NewSecretGroupHandler(groupService, logger)
 
-	//Environment service and handler setup 
-	environmentService:=environment.NewEnvironmentService(environmentdb.New(dbConn),logger,*iamService)
-	environmentHandler:=environment.NewEnvironmentHandler(environmentService,logger)
-
-	
-
-
-
-
+	//Environment service and handler setup
+	environmentService := environment.NewEnvironmentService(environmentdb.New(dbConn), logger, *iamService)
+	environmentHandler := environment.NewEnvironmentHandler(environmentService, logger)
 
 	// Create the HTTP server
 	s := server.New(cfg, logger)
 
 	// Register all routes (auth, org, etc.)
-	s.SetupRoutes(authHandler, iamHandler,orgHandler,groupHandler,environmentHandler, userGroupHandler,jwter)
+	s.SetupRoutes(authHandler, iamHandler, orgHandler, groupHandler, environmentHandler, userGroupHandler, jwter,dbConn,cfg)
 
 	// Start the server and log fatal on error
 	if err := s.Start(); err != nil {
