@@ -7,6 +7,7 @@ import (
 	userdb "github.com/Gkemhcs/kavach-backend/internal/auth/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/auth/jwt"
 	"github.com/Gkemhcs/kavach-backend/internal/auth/provider"
+	"github.com/Gkemhcs/kavach-backend/internal/authz"
 	"github.com/Gkemhcs/kavach-backend/internal/config"
 	"github.com/Gkemhcs/kavach-backend/internal/db"
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
@@ -15,6 +16,7 @@ import (
 	groupsdb "github.com/Gkemhcs/kavach-backend/internal/groups/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/iam"
 	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/middleware"
 	"github.com/Gkemhcs/kavach-backend/internal/secretgroup"
 	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
 
@@ -53,35 +55,52 @@ func main() {
 		time.Duration(cfg.AccessTokenDuration)*time.Minute,
 		time.Duration(cfg.RefreshTokenDuration)*time.Minute,
 	)
+
+	// authzEnforcer Service initialization
+	enforcerConfig := authz.AdapterConfig{
+		DB_HOST:         cfg.DBHost,
+		DB_PORT:         cfg.DBPort,
+		DB_USER:         cfg.DBUser,
+		DB_PASSWORD:     cfg.DBPassword,
+		DB_NAME:         cfg.DBName,
+		MODEL_FILE_PATH: cfg.ModelFilePath,
+	}
+	authzEnforcer ,err:= authz.NewEnforcer(logger,enforcerConfig)
+	if err!=nil{
+		panic(err)
+	}
+
 	// Auth service and handler setup
 	authService := auth.NewAuthService(githubProvider, userdb.New(dbConn), jwter, logger)
 	authHandler := auth.NewAuthHandler(authService, logger)
 
 	//UserGroup service and handler setup
-	userGroupService := groups.NewUserGroupService(logger, groupsdb.New(dbConn), authService)
+	userGroupService := groups.NewUserGroupService(logger, groupsdb.New(dbConn), authService,authzEnforcer)
 	userGroupHandler := groups.NewUserGroupHandler(logger, userGroupService)
 
 	//IamService setup
 
-	iamService := iam.NewIamService(iam_db.New(dbConn), authService, userGroupService, logger)
+	iamService := iam.NewIamService(iam_db.New(dbConn), authService, userGroupService, logger,authzEnforcer)
 	iamHandler := iam.NewIamHandler(*iamService, logger)
 	// Organization service and handler setup
-	orgService := org.NewOrganizationService(orgdb.New(dbConn), logger, *iamService)
+	orgService := org.NewOrganizationService(orgdb.New(dbConn), logger, *iamService,authzEnforcer)
 	orgHandler := org.NewOrganizationHandler(orgService, logger)
 
 	//SecretGroup service and handler setup
-	groupService := secretgroup.NewSecretGroupService(secretgroupdb.New(dbConn), logger, *iamService)
+	groupService := secretgroup.NewSecretGroupService(secretgroupdb.New(dbConn), logger, *iamService,authzEnforcer)
 	groupHandler := secretgroup.NewSecretGroupHandler(groupService, logger)
 
 	//Environment service and handler setup
-	environmentService := environment.NewEnvironmentService(environmentdb.New(dbConn), logger, *iamService)
+	environmentService := environment.NewEnvironmentService(environmentdb.New(dbConn), logger, *iamService,authzEnforcer)
 	environmentHandler := environment.NewEnvironmentHandler(environmentService, logger)
 
 	// Create the HTTP server
 	s := server.New(cfg, logger)
 
+	authzMiddleware:=middleware.NewAuthMiddleware(authzEnforcer,logger)
+
 	// Register all routes (auth, org, etc.)
-	s.SetupRoutes(authHandler, iamHandler, orgHandler, groupHandler, environmentHandler, userGroupHandler, jwter,dbConn,cfg)
+	s.SetupRoutes(authHandler, iamHandler, orgHandler, groupHandler, environmentHandler, userGroupHandler, jwter, cfg, logger,authzMiddleware)
 
 	// Start the server and log fatal on error
 	if err := s.Start(); err != nil {

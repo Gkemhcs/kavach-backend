@@ -60,3 +60,11 @@ packages:
     engine: "postgresql"
     emit_json_tags: true
     emit_interface: true
+  - name: "secretdb"
+    path: "internal/secret/gen"
+    queries:
+      - "internal/secret/queries.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true

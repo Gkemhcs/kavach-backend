@@ -12,8 +12,10 @@ import (
 func New(cfg *config.Config) *logrus.Logger {
 	log := logrus.New()
 	log.SetOutput(os.Stdout)
-	log.SetFormatter(&logrus.JSONFormatter{})
-
+	log.SetFormatter(&logrus.JSONFormatter{
+		PrettyPrint: true,
+	})
+	
 	if cfg.Env == "development" {
 		log.SetLevel(logrus.DebugLevel)
 	} else {

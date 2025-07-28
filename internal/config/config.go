@@ -21,6 +21,7 @@ type Config struct {
 	JWTDuration          int    // JWT token duration in minutes (deprecated, use AccessTokenDuration)
 	AccessTokenDuration  int    // Access token duration in minutes
 	RefreshTokenDuration int    // Refresh token duration in minutes
+	ModelFilePath string 
 }
 
 // Load reads configuration from the .env file and environment variables, returning a Config struct.
@@ -35,6 +36,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("DB_PORT", "5432")
 	viper.SetDefault("ACCESS_TOKEN_DURATION", 10)    // 10 minutes
 	viper.SetDefault("REFRESH_TOKEN_DURATION", 1440) // 1 day in minutes
+	viper.Set("MODEL_FILE_PATH","internal/authz/model.conf")
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
 	}
@@ -54,5 +56,6 @@ func Load() (*Config, error) {
 		JWTDuration:          viper.GetInt("JWT_DURATION"),
 		AccessTokenDuration:  viper.GetInt("ACCESS_TOKEN_DURATION"),
 		RefreshTokenDuration: viper.GetInt("REFRESH_TOKEN_DURATION"),
+		ModelFilePath: viper.GetString("MODEL_FILE_PATH"),
 	}, nil
 }

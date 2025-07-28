@@ -2,7 +2,10 @@ package iam
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 
+	"github.com/Gkemhcs/kavach-backend/internal/authz"
 	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/types"
@@ -12,12 +15,13 @@ import (
 
 // NewIamService creates a new IamService instance with the provided dependencies.
 // This service handles business logic for IAM operations including role binding management.
-func NewIamService(iam_repo iam_db.Querier, userResolver types.UserResolver, userGroupResolver types.UserGroupResolver, logger *logrus.Logger) *IamService {
+func NewIamService(iam_repo iam_db.Querier, userResolver types.UserResolver, userGroupResolver types.UserGroupResolver, logger *logrus.Logger, policyEnforcer *authz.Enforcer) *IamService {
 	return &IamService{
 		iamRepo:           iam_repo,
 		userResolver:      userResolver,
 		userGroupResolver: userGroupResolver,
 		logger:            logger,
+		policyEnforcer:    policyEnforcer,
 	}
 }
 
@@ -56,6 +60,7 @@ type IamService struct {
 	logger            *logrus.Logger
 	userResolver      types.UserResolver
 	userGroupResolver types.UserGroupResolver
+	policyEnforcer    *authz.Enforcer
 }
 
 // CreateRoleBinding creates a new role binding for a user on a specific resource.
@@ -77,7 +82,25 @@ func (s *IamService) CreateRoleBinding(ctx context.Context, req CreateRoleBindin
 	if err != nil {
 		return nil, err
 	}
+
 	return &binding, nil
+}
+
+func (s *IamService) DeleteRoleBinding(ctx context.Context, req DeleteRoleBindingRequest) error {
+
+	params := iam_db.DeleteRoleBindingParams{
+		ResourceType: iam_db.ResourceType(req.ResourceType),
+		ResourceID:   req.ResourceID,
+	}
+	err := s.iamRepo.DeleteRoleBinding(ctx, params)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return apiErrors.ErrRoleBindingNotFound
+		}
+		return err
+	}
+	return nil
+
 }
 
 // ListAccessibleOrganizations retrieves all organizations that a user has access to.
@@ -143,7 +166,7 @@ func (s *IamService) GrantRoleBinding(ctx context.Context, req GrantRoleBindingR
 		"resourceID":   req.ResourceID.String(),
 		"orgID":        req.OrganizationID.String(),
 	}).Info("Granting role binding in database")
-
+	var sub string
 	params := iam_db.GrantRoleBindingParams{
 		ResourceType:   mapResourceType(req.ResourceType),
 		Role:           mapRole(req.Role),
@@ -167,7 +190,7 @@ func (s *IamService) GrantRoleBinding(ctx context.Context, req GrantRoleBindingR
 			}).Error("Failed to resolve user group for role binding")
 			return err
 		}
-
+		sub = fmt.Sprintf("group:%s", group.ID.String())
 		params.GroupID = uuid.NullUUID{
 			UUID:  group.ID,
 			Valid: true,
@@ -193,6 +216,7 @@ func (s *IamService) GrantRoleBinding(ctx context.Context, req GrantRoleBindingR
 			}).Error("Failed to resolve user for role binding")
 			return err
 		}
+		sub = fmt.Sprintf("user:%s", user.ID.String())
 
 		params.UserID = uuid.NullUUID{
 			UUID:  user.ID,
@@ -230,6 +254,7 @@ func (s *IamService) GrantRoleBinding(ctx context.Context, req GrantRoleBindingR
 			"resourceID":   req.ResourceID.String(),
 			"error":        err.Error(),
 		}).Error("Failed to grant role binding in database")
+
 		return err
 	}
 
@@ -240,7 +265,29 @@ func (s *IamService) GrantRoleBinding(ctx context.Context, req GrantRoleBindingR
 		"resourceType": req.ResourceType,
 		"resourceID":   req.ResourceID.String(),
 	}).Info("Role binding granted successfully in database")
+	var resource string
 
+	switch req.ResourceType {
+	case "environment":
+		resource = fmt.Sprintf("/organizations/%s/secret-groups/%s/environments/%s", req.OrganizationID, req.SecretGroupID.UUID.String(), req.EnvironmentID.UUID.String())
+	case "secret_group":
+		resource = fmt.Sprintf("/organizations/%s/secret-groups/%s", req.OrganizationID, req.SecretGroupID.UUID.String())
+	default:
+		resource = fmt.Sprintf("/organizations/%s", req.OrganizationID)
+	}
+
+	err = s.policyEnforcer.GrantRole(sub, req.Role, resource)
+	logEntry := s.logger.WithFields(logrus.Fields{
+		"sub":      sub,
+		"resource": resource,
+		"role":     req.Role,
+	})
+	if err != nil {
+		logEntry.Errorf("cannot add policy to the authorization")
+		return err
+	}
+
+	logEntry.Info("succesfully added policy to authorization")
 	return nil
 }
 
@@ -262,7 +309,7 @@ func (s *IamService) RevokeRoleBinding(ctx context.Context, req RevokeRoleBindin
 		Role:         mapRole(req.Role),
 		ResourceID:   req.ResourceID,
 	}
-
+	var sub string
 	// Handle user-based role binding revocation
 	if req.UserName == "" {
 		params.UserID = uuid.NullUUID{Valid: false}
@@ -282,7 +329,7 @@ func (s *IamService) RevokeRoleBinding(ctx context.Context, req RevokeRoleBindin
 			UUID:  group.ID,
 			Valid: true,
 		}
-
+		sub = fmt.Sprintf("group:%s", group.ID.String())
 		s.logger.WithFields(logrus.Fields{
 			"groupID":      group.ID.String(),
 			"groupName":    req.GroupName,
@@ -308,7 +355,7 @@ func (s *IamService) RevokeRoleBinding(ctx context.Context, req RevokeRoleBindin
 			UUID:  user.ID,
 			Valid: true,
 		}
-
+		sub = fmt.Sprintf("user:%s", user.ID.String())
 		s.logger.WithFields(logrus.Fields{
 			"userID":       user.ID.String(),
 			"userName":     req.UserName,
@@ -365,6 +412,34 @@ func (s *IamService) RevokeRoleBinding(ctx context.Context, req RevokeRoleBindin
 		"resourceID":   req.ResourceID.String(),
 		"rowsAffected": rows,
 	}).Info("Role binding revoked successfully from database")
+
+	var resource string
+	switch req.ResourceType {
+	case "secret_group":
+		resource = fmt.Sprintf("/organizations/%s/secret-groups/%s",
+			req.OrganizationID.String(),
+			req.SecretGroupID.UUID.String())
+	case "environment":
+		resource = fmt.Sprintf("/organizations/%s/secret-groups/%s/environments/%s",
+			req.OrganizationID.String(),
+			req.SecretGroupID.UUID.String(),
+			req.EnvironmentID.UUID.String())
+	default:
+		resource = fmt.Sprintf("/organizations/%s", req.OrganizationID.String())
+	}
+	// Use cascading revocation to ensure all child resources are also revoked
+	err = s.policyEnforcer.RevokeRoleCascade(sub, req.Role, resource)
+	logEntry := s.logger.WithFields(logrus.Fields{
+		"sub":      sub,
+		"resource": resource,
+		"role":     req.Role,
+	})
+
+	if err != nil {
+		logEntry.Errorf("cannot remove the binding: %v", err)
+		return err
+	}
+	logEntry.Info("successfully removed policy and all child resource policies")
 
 	return nil
 }

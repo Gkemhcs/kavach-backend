@@ -41,10 +41,8 @@ WHERE user_id = $1
 -- Deletes the exact role binding identified by the composite key
 -- name: DeleteRoleBinding :exec
 DELETE FROM role_bindings
-WHERE user_id = $1
-  AND role = $2
-  AND resource_type = $3
-  AND resource_id = $4;
+WHERE resource_type = $1
+  AND resource_id = $2 ;
 
 -- ListAccessibleOrganizations: Retrieves all organizations that a user has access to
 -- Joins with organizations table to get organization details along with user's role

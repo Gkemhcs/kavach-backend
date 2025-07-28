@@ -3,8 +3,10 @@ package groups
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/Gkemhcs/kavach-backend/internal/auth"
+	"github.com/Gkemhcs/kavach-backend/internal/authz"
 	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	groupsdb "github.com/Gkemhcs/kavach-backend/internal/groups/gen"
 	"github.com/google/uuid"
@@ -13,20 +15,22 @@ import (
 
 // NewUserGroupService creates a new UserGroupService instance with the provided dependencies.
 // This service handles business logic for user group operations including CRUD operations and member management.
-func NewUserGroupService(logger *logrus.Logger, usergroupRepo groupsdb.Querier, userService auth.UserInfoGetter) *UserGroupService {
+func NewUserGroupService(logger *logrus.Logger, usergroupRepo groupsdb.Querier, userService auth.UserInfoGetter, policyEnforcer *authz.Enforcer) *UserGroupService {
 	return &UserGroupService{
-		logger:        logger,
-		userGroupRepo: usergroupRepo,
-		userService:   userService,
+		logger:         logger,
+		userGroupRepo:  usergroupRepo,
+		userService:    userService,
+		policyEnforcer: policyEnforcer,
 	}
 }
 
 // UserGroupService provides business logic for user group operations.
 // It coordinates between the repository layer and external services like user management.
 type UserGroupService struct {
-	logger        *logrus.Logger
-	userGroupRepo groupsdb.Querier
-	userService   auth.UserInfoGetter
+	logger         *logrus.Logger
+	userGroupRepo  groupsdb.Querier
+	userService    auth.UserInfoGetter
+	policyEnforcer *authz.Enforcer
 }
 
 // CreateUserGroup creates a new user group within an organization.
@@ -75,6 +79,18 @@ func (s *UserGroupService) CreateUserGroup(ctx context.Context, req CreateUserGr
 		"groupName": group.Name,
 	}).Info("User group created successfully in database")
 
+	parentResourcePath := fmt.Sprintf("/organizations/%s", orgID)
+	childResourcePath := fmt.Sprintf("/organizations/%s/user-groups/%s", orgID, group.ID)
+	err = s.policyEnforcer.AddResourceOwner(req.UserID, childResourcePath)
+	if err != nil {
+		s.logger.Errorf("failed to add secure permissions for usergroup %s", req.GroupName)
+		return nil, err
+	}
+	err = s.policyEnforcer.AddResourceHierarchy(parentResourcePath, childResourcePath)
+	if err != nil {
+		s.logger.Errorf("unable to add %s to resoure heirarchy of %s ", childResourcePath, parentResourcePath)
+		return nil, err
+	}
 	return &group, nil
 }
 
@@ -154,6 +170,34 @@ func (s *UserGroupService) DeleteUserGroup(ctx context.Context, orgID, userGroup
 		"userGroupID": userGroupID,
 	}).Info("User group deleted successfully from database")
 
+	// Clean up all group-related policies and memberships
+	err = s.policyEnforcer.DeleteUserGroup(userGroupID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID":       orgID,
+			"userGroupID": userGroupID,
+			"error":       err.Error(),
+		}).Error("Failed to delete group policies and memberships")
+		return err
+	}
+
+	// Remove resource hierarchy
+	parentResourcePath := fmt.Sprintf("/organizations/%s", orgID)
+	childResourcePath := fmt.Sprintf("/organizations/%s/user-groups/%s", orgID, userGroupID)
+	err = s.policyEnforcer.RemoveResourceHierarchy(parentResourcePath, childResourcePath)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID":       orgID,
+			"userGroupID": userGroupID,
+			"error":       err.Error(),
+		}).Error("Failed to remove resource hierarchy")
+		return err
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"orgID":       orgID,
+		"userGroupID": userGroupID,
+	}).Info("User group and all associated policies deleted successfully")
 	return nil
 }
 
@@ -240,7 +284,11 @@ func (s *UserGroupService) AddGroupMember(ctx context.Context, req AddMemberRequ
 		"userName":    req.UserName,
 		"userID":      user.ID.String(),
 	}).Info("Member added to user group successfully")
-
+	err = s.policyEnforcer.AddUserToGroup(user.ID.String(), req.UserGroupID)
+	if err != nil {
+		s.logger.Errorf("unable to add bind user %s with user group %s", user.Name.String, req.UserGroupID)
+		return err
+	}
 	return nil
 }
 
@@ -316,6 +364,11 @@ func (s *UserGroupService) RemoveGroupMember(ctx context.Context, req RemoveMemb
 		"rowsAffected": rowsAffected,
 	}).Info("Member removed from user group successfully")
 
+	err = s.policyEnforcer.RemoveUserFromGroup(user.ID.String(), req.UserGroupID)
+	if err != nil {
+		s.logger.Errorf("unable to remove the user %s from group %s", req.UserName, req.UserGroupID)
+		return err
+	}
 	return nil
 }
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
+	"github.com/Gkemhcs/kavach-backend/internal/authz"
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	"github.com/Gkemhcs/kavach-backend/internal/iam"
 	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
@@ -17,15 +19,16 @@ import (
 // SecretGroupService provides business logic for secret groups.
 // Encapsulates all secret group-related operations and validation.
 type SecretGroupService struct {
-	repo       secretgroupdb.Querier
-	logger     *logrus.Logger
-	iamService iam.IamService
+	repo           secretgroupdb.Querier
+	logger         *logrus.Logger
+	iamService     iam.IamService
+	policyEnforcer *authz.Enforcer
 }
 
 // NewSecretGroupService creates a new SecretGroupService.
 // Used to inject dependencies and enable testability.
-func NewSecretGroupService(repo secretgroupdb.Querier, logger *logrus.Logger, iamService iam.IamService) *SecretGroupService {
-	return &SecretGroupService{repo, logger, iamService}
+func NewSecretGroupService(repo secretgroupdb.Querier, logger *logrus.Logger, iamService iam.IamService, policyEnforcer *authz.Enforcer) *SecretGroupService {
+	return &SecretGroupService{repo, logger, iamService, policyEnforcer}
 }
 
 // CreateSecretGroup creates a new secret group under an organization.
@@ -70,6 +73,19 @@ func (s *SecretGroupService) CreateSecretGroup(ctx context.Context, req CreateSe
 	if err != nil {
 		return nil, err
 	}
+	parentResourcePath := fmt.Sprintf("/organizations/%s", orgUUID.String())
+	childResourcePath := fmt.Sprintf("/organizations/%s/secret-groups/%s", orgUUID.String(), group.ID.String())
+	err = s.policyEnforcer.AddResourceOwner(req.UserID, childResourcePath)
+
+	if err != nil {
+		s.logger.Errorf("Failed to grant secure permissions for secret group %s: %v", group.ID, err)
+		return nil, err
+	}
+	err = s.policyEnforcer.AddResourceHierarchy(parentResourcePath, childResourcePath)
+	if err != nil {
+		fmt.Printf("failed to add to  resource heirarchy")
+	}
+
 	return &group, nil
 }
 
@@ -161,11 +177,36 @@ func (s *SecretGroupService) DeleteSecretGroup(ctx context.Context, userID, orgI
 		return appErrors.ErrInternalServer
 	}
 	err = s.repo.DeleteSecretGroup(ctx, groupUUID)
+	
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return appErrors.ErrNotFound
 		}
-		return appErrors.ErrInternalServer
+		if appErrors.IsViolatingForeignKeyConstraints(err) {
+			return appErrors.ErrForeignKeyViolation
+		}
+		return err
+	}
+	params := iam.DeleteRoleBindingRequest{
+		ResourceType: "secret_group",
+		ResourceID:   groupUUID,
+	}
+	err = s.iamService.DeleteRoleBinding(ctx, params)
+	if err != nil {
+		return err
+	}
+	parentResourcePath := fmt.Sprintf("/organizations/%s", orgID)
+	childResourcePath := fmt.Sprintf("/organizations/%s/secret-groups/%s", orgID, groupID)
+	err = s.policyEnforcer.RemoveResource(childResourcePath)
+	if err != nil {
+		s.logger.Errorf("Failed to remove secure permissions assigned to secretgroup %s: %v", orgID, err)
+		return err
+	}
+
+	err = s.policyEnforcer.RemoveResourceHierarchy(parentResourcePath, childResourcePath)
+	if err != nil {
+		s.logger.Errorf("unable to remove the resource from resource hierarchy")
+		return err
 	}
 	return nil
 }

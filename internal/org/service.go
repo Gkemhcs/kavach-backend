@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
+	"github.com/Gkemhcs/kavach-backend/internal/authz"
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	"github.com/Gkemhcs/kavach-backend/internal/iam"
 	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
@@ -18,15 +20,16 @@ import (
 // OrganizationService provides business logic for organizations.
 // Encapsulates all organization-related operations and validation.
 type OrganizationService struct {
-	repo       orgdb.Querier
-	logger     *logrus.Logger
-	iamService iam.IamService
+	repo           orgdb.Querier
+	logger         *logrus.Logger
+	iamService     iam.IamService
+	policyEnforcer *authz.Enforcer
 }
 
 // NewOrganizationService creates a new OrganizationService.
 // Used to inject dependencies and enable testability.
-func NewOrganizationService(repo orgdb.Querier, logger *logrus.Logger, iamService iam.IamService) *OrganizationService {
-	return &OrganizationService{repo, logger, iamService}
+func NewOrganizationService(repo orgdb.Querier, logger *logrus.Logger, iamService iam.IamService, policEnforcer *authz.Enforcer) *OrganizationService {
+	return &OrganizationService{repo, logger, iamService, policEnforcer}
 
 }
 
@@ -64,6 +67,15 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, req Create
 	if err != nil {
 		return nil, err
 	}
+
+	// Grant secure resource-specific permissions instead of wildcard access
+	resourcePath := fmt.Sprintf("/organizations/%s", org.ID)
+	err = s.policyEnforcer.GrantRoleWithPermissions(req.UserID, "owner", resourcePath)
+	if err != nil {
+		s.logger.Errorf("Failed to grant secure permissions for organization %s: %v", org.ID, err)
+		return nil, err
+	}
+
 	return &org, nil
 }
 
@@ -109,8 +121,7 @@ func (s *OrganizationService) GetOrganization(ctx context.Context, userID, orgID
 }
 
 // GetOrganizationByName gets a specific organization by name for the user.
-func (s *OrganizationService) GetOrganizationByName(ctx context.Context, orgName string,) (*orgdb.Organization, error) {
-
+func (s *OrganizationService) GetOrganizationByName(ctx context.Context, orgName string) (*orgdb.Organization, error) {
 
 	org, err := s.repo.GetOrganizationByName(ctx, orgName)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
@@ -142,15 +153,38 @@ func (s *OrganizationService) UpdateOrganization(ctx context.Context, userID, or
 }
 
 // DeleteOrganization deletes an organization by ID for the user.
-func (s *OrganizationService) DeleteOrganization(ctx context.Context, orgID uuid.UUID) error {
+func (s *OrganizationService) DeleteOrganization(ctx context.Context, orgID string) error {
 	s.logger.Infof("Deleting organization org_id=%s ", orgID)
+	orgId,err:=uuid.Parse(orgID)
+	if err!=nil{
+		return err 
+	}
 
-	err := s.repo.DeleteOrganization(ctx, orgID)
+	err = s.repo.DeleteOrganization(ctx, orgId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return appErrors.ErrOrganizationNotFound
 		}
-		return appErrors.ErrInternalServer
+		if appErrors.IsViolatingForeignKeyConstraints(err){
+			return appErrors.ErrForeignKeyViolation
+		}
+		
+		return err 
+	}
+	params := iam.DeleteRoleBindingRequest{
+		ResourceID:   orgId,
+		ResourceType: "organization",
+	}
+	err = s.iamService.DeleteRoleBinding(ctx, params)
+	if err != nil {
+		return err
+	}
+	resource := fmt.Sprintf("/organizations/%s", orgID)
+	err = s.policyEnforcer.RemoveResource(resource)
+	if err != nil {
+		s.logger.Errorf("Failed to remove secure permissions assigned to organization %s: %v", orgID, err)
+		return err
 	}
 	return nil
+
 }

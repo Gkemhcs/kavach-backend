@@ -44,15 +44,16 @@ func RegisterOrganizationRoutes(handler *OrganizationHandler,
 	orgGroup.Use(jwtMiddleware)
 
 	secretgroup.RegisterSecretGroupRoutes(secretGroupHandler, orgGroup, environmentHandler, jwtMiddleware)
-	groups.RegisterUserGroupRoutes(userGroupHandler,orgGroup,jwtMiddleware)
+	groups.RegisterUserGroupRoutes(userGroupHandler, orgGroup, jwtMiddleware)
 	// Now register organization routes
 	orgGroup.GET("/by-name/:orgName", handler.GetOrganizationByName)
-	orgGroup.DELETE("/by-name/:orgName", handler.DeleteOrganization)
+
 	orgGroup.GET("/my", handler.ListMyOrganizations)
 	orgGroup.POST("/", handler.CreateOrganization)
 	orgGroup.GET("/", handler.ListOrganizations)
 	orgGroup.GET(":orgID", handler.GetOrganization)
 	orgGroup.PUT(":orgID", handler.UpdateOrganization)
+	orgGroup.DELETE("/:orgID", handler.DeleteOrganization)
 
 }
 
@@ -65,8 +66,6 @@ func ToOrganizationResponse(org *orgdb.Organization) OrganizationResponseData {
 		Description: toNullableString(org.Description),
 	}
 }
-
-
 
 // toNullableString safely converts sql.NullString to *string for JSON marshalling.
 func toNullableString(ns sql.NullString) *string {
@@ -92,6 +91,7 @@ func (h *OrganizationHandler) CreateOrganization(c *gin.Context) {
 		apiErr, _ := err.(*apiErrors.APIError)
 
 		utils.RespondError(c, http.StatusBadRequest, apiErr.Code, apiErr.Message)
+		return
 	}
 	if err != nil {
 		h.logger.Error("CreateOrganization error: ", err)
@@ -126,7 +126,7 @@ func (h *OrganizationHandler) ListMyOrganizations(c *gin.Context) {
 		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not list organizations")
 		return
 	}
-	
+
 	utils.RespondSuccess(c, http.StatusOK, orgs)
 }
 
@@ -134,7 +134,7 @@ func (h *OrganizationHandler) ListMyOrganizations(c *gin.Context) {
 // Gets a specific organization by name for the user.
 func (h *OrganizationHandler) GetOrganizationByName(c *gin.Context) {
 	orgName := c.Param("orgName")
-	
+
 	org, err := h.service.GetOrganizationByName(c.Request.Context(), orgName)
 	if err == apiErrors.ErrOrganizationNotFound {
 		apiErr, _ := err.(*apiErrors.APIError)
@@ -189,20 +189,17 @@ func (h *OrganizationHandler) UpdateOrganization(c *gin.Context) {
 // DeleteOrganization handles DELETE /organizations/:id
 // Deletes an organization by name for the user.
 func (h *OrganizationHandler) DeleteOrganization(c *gin.Context) {
-	
-	orgName := c.Param("orgName")
 
-	org, err := h.service.GetOrganizationByName(c.Request.Context(), orgName)
-	if err == apiErrors.ErrOrganizationNotFound {
-		apiErr, _ := err.(*apiErrors.APIError)
-		h.logger.Errorf("organisation is not found with name")
-		utils.RespondError(c, http.StatusBadRequest, apiErr.Code, apiErr.Message)
-		return
-	}
+	orgID := c.Param("orgID")
 
-	err = h.service.DeleteOrganization(c.Request.Context(), org.ID)
+	err := h.service.DeleteOrganization(c.Request.Context(), orgID)
 
 	if err != nil {
+		if err == apiErrors.ErrForeignKeyViolation {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
 		h.logger.Error("DeleteOrganization error: ", err)
 		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not delete organization")
 		return

@@ -101,6 +101,7 @@ func (h *SecretGroupHandler) Create(c *gin.Context) {
 		apiErr, _ := err.(*apiErrors.APIError)
 
 		utils.RespondError(c, http.StatusBadRequest, apiErr.Code, apiErr.Message)
+		return
 	}
 	if err != nil {
 		h.logger.Error("CreateSecretGroup error: ", err)
@@ -208,7 +209,12 @@ func (h *SecretGroupHandler) Delete(c *gin.Context) {
 	groupID := c.Param("groupID")
 	err := h.service.DeleteSecretGroup(c.Request.Context(), userID, orgID, groupID)
 	if err != nil {
-		h.logger.Error("DeleteSecretGroup error: ", err)
+		if err==apiErrors.ErrForeignKeyViolation{
+			apiErr:=err.(*apiErrors.APIError)
+			utils.RespondError(c,apiErr.Status,apiErr.Code,apiErr.Message)
+			return 
+		}
+	
 		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not delete secret group")
 		return
 	}

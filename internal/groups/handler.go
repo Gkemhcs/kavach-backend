@@ -84,6 +84,7 @@ func RegisterUserGroupRoutes(handler *UserGroupHandler, orgRouterGroup *gin.Rout
 // Validates the request payload, ensures unique group names within the organization,
 // and returns the created group details or appropriate error responses.
 func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
+	userId := c.GetString("user_id")
 	orgID := c.Param("orgID")
 	var req CreateUserGroupRequest
 
@@ -98,6 +99,8 @@ func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
 	}
 
 	req.OrganizationID = orgID
+	req.UserID=userId
+	
 
 	h.logger.WithFields(logrus.Fields{
 		"orgID":          orgID,

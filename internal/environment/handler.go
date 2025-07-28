@@ -100,8 +100,8 @@ func (h *EnvironmentHandler) Create(c *gin.Context) {
 		case appErrors.ErrInternalServer:
 			utils.RespondError(c, http.StatusInternalServerError, appErrors.ErrInternalServer.Code, appErrors.ErrInternalServer.Message)
 			return
-		case appErrors.ErrEnvironmenNameNotAllowed:
-			utils.RespondError(c, http.StatusInternalServerError, appErrors.ErrEnvironmenNameNotAllowed.Code, appErrors.ErrEnvironmenNameNotAllowed.Message)
+		case appErrors.ErrEnvironmentNameNotAllowed:
+			utils.RespondError(c, http.StatusInternalServerError, appErrors.ErrEnvironmentNameNotAllowed.Code, appErrors.ErrEnvironmentNameNotAllowed.Message)
 			return
 		default:
 			utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not create environment")

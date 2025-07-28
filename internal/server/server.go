@@ -1,12 +1,10 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/Gkemhcs/kavach-backend/internal/auth"
 	"github.com/Gkemhcs/kavach-backend/internal/auth/jwt"
-	"github.com/Gkemhcs/kavach-backend/internal/authz"
 	"github.com/Gkemhcs/kavach-backend/internal/config"
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
 	"github.com/Gkemhcs/kavach-backend/internal/groups"
@@ -34,39 +32,25 @@ func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,
 	environmentHandler *environment.EnvironmentHandler,
 	userGroupHandler *groups.UserGroupHandler,
 	jwter *jwt.Manager,
-	db *sql.DB,
-	cfg *config.Config) {
+	cfg *config.Config,
+	logger *logrus.Logger,
+	authzMiddleware *middleware.AuthMiddleware) {
 	// Create API v1 router group
 	v1 := s.engine.Group("/api/v1")
-
-	// Prepare Postgres connection string from config
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
-
-	// Prepare authz config
-	authzConfig := &authz.Config{
-		DatabaseURL: dbURL,
-		TableName:   "casbin_rule",
-	}
-
-	// Initialize the authorization system with your main DB connection and config
-	authzSystem, err := authz.NewSystem(db, authzConfig, s.log)
-	if err != nil {
-		s.log.Fatalf("Failed to initialize authorization system: %v", err)
-	}
 
 	jwtMiddleware := middleware.JWTAuthMiddleware(jwter)
 
 	// Register auth routes FIRST (no middleware - these are public)
 	auth.RegisterAuthRoutes(authHandler, v1)
 
-	// Create a new group for protected routes that need JWT + authorization
+	// Create a new group for protected routes that need JWT
 	protected := v1.Group("")
 	protected.Use(jwtMiddleware)
-	protected.Use(authzSystem.Middleware.Authorize())
-
+	protected.Use(authzMiddleware.Middleware())
 	// Register all other routes under the protected group
 	iam.RegisterIamRoutes(iamHandler, protected)
 	org.RegisterOrganizationRoutes(orgHandler, protected, secretgroupHandler, environmentHandler, userGroupHandler, jwtMiddleware)
+
 	// Add other route groups here as needed
 	// Example: secrets.RegisterSecretRoutes(secretHandler, v1)
 	// Example: orgs.RegisterOrgRoutes(orgHandler, v1)

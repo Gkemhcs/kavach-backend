@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -45,7 +46,8 @@ var (
 	ErrDuplicateRoleBinding       = NewAPIError("duplicate_role_binding", "the role binding was already present", http.StatusBadRequest)
 	ErrNotFound                   = NewAPIError("not_found", "Resource not found", http.StatusNotFound)
 	ErrInternalServer             = NewAPIError("internal_error", "Internal server error", http.StatusInternalServerError)
-	ErrEnvironmenNameNotAllowed   = NewAPIError("environment_name_not_allowed", "environment name  you entered is not allowed allowed names are:-prod,dev,staging", http.StatusConflict)
+	ErrEnvironmentNameNotAllowed   = NewAPIError("environment_name_not_allowed", "environment name  you entered is not allowed allowed names are:-prod,dev,staging", http.StatusConflict)
+	ErrForeignKeyViolation=NewAPIError("foreign_key_constraint_violation","violating foreign key constraint",http.StatusConflict)
 )
 
 // IsUniqueViolation checks for unique constraint violation (Postgres).
@@ -73,4 +75,17 @@ func IsCheckConstraintViolation(err error) bool {
 		return false
 	}
 	return pqErr.Code == "23514" // check_violation
+}
+
+func IsViolatingForeignKeyConstraints(err error)bool{
+
+	// Check lib/pq error
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		if pqErr.Code == "23503" {
+			return true 
+		}
+	}
+	return false 
+	// fallback
 }

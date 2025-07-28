@@ -69,28 +69,19 @@ func (q *Queries) CreateRoleBinding(ctx context.Context, arg CreateRoleBindingPa
 
 const deleteRoleBinding = `-- name: DeleteRoleBinding :exec
 DELETE FROM role_bindings
-WHERE user_id = $1
-  AND role = $2
-  AND resource_type = $3
-  AND resource_id = $4
+WHERE resource_type = $1
+  AND resource_id = $2
 `
 
 type DeleteRoleBindingParams struct {
-	UserID       uuid.NullUUID `json:"user_id"`
-	Role         UserRole      `json:"role"`
-	ResourceType ResourceType  `json:"resource_type"`
-	ResourceID   uuid.UUID     `json:"resource_id"`
+	ResourceType ResourceType `json:"resource_type"`
+	ResourceID   uuid.UUID    `json:"resource_id"`
 }
 
 // DeleteRoleBinding: Removes a specific role binding from the system
 // Deletes the exact role binding identified by the composite key
 func (q *Queries) DeleteRoleBinding(ctx context.Context, arg DeleteRoleBindingParams) error {
-	_, err := q.db.ExecContext(ctx, deleteRoleBinding,
-		arg.UserID,
-		arg.Role,
-		arg.ResourceType,
-		arg.ResourceID,
-	)
+	_, err := q.db.ExecContext(ctx, deleteRoleBinding, arg.ResourceType, arg.ResourceID)
 	return err
 }
 

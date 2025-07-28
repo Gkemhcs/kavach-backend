@@ -8,6 +8,7 @@ type CreateUserGroupRequest struct {
 	GroupName      string `json:"group_name"`       // Name of the user group (required, must be unique within org)
 	Description    string `json:"description"`      // Optional description of the group's purpose
 	OrganizationID string `json:"org_id,omitempty"` // Organization ID where the group will be created
+	UserID         string `json:"user_id,omitempty"`
 }
 
 // UserGroupResponseData represents the response payload for user group operations.
