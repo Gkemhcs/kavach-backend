@@ -99,8 +99,7 @@ func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
 	}
 
 	req.OrganizationID = orgID
-	req.UserID=userId
-	
+	req.UserID = userId
 
 	h.logger.WithFields(logrus.Fields{
 		"orgID":          orgID,

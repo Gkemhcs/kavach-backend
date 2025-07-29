@@ -68,3 +68,11 @@ packages:
     engine: "postgresql"
     emit_json_tags: true
     emit_interface: true
+  - name: "providerdb"
+    path: "internal/provider/gen"
+    queries:
+      - "internal/provider/queries.sql"
+    schema: "internal/db/migrations"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_interface: true

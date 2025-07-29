@@ -17,6 +17,10 @@ import (
 	"github.com/Gkemhcs/kavach-backend/internal/iam"
 	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/middleware"
+	secretProvider "github.com/Gkemhcs/kavach-backend/internal/provider"
+	providerdb "github.com/Gkemhcs/kavach-backend/internal/provider/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/secret"
+	secretdb "github.com/Gkemhcs/kavach-backend/internal/secret/gen"
 	"github.com/Gkemhcs/kavach-backend/internal/secretgroup"
 	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
 
@@ -65,42 +69,61 @@ func main() {
 		DB_NAME:         cfg.DBName,
 		MODEL_FILE_PATH: cfg.ModelFilePath,
 	}
-	authzEnforcer ,err:= authz.NewEnforcer(logger,enforcerConfig)
-	if err!=nil{
+	authzEnforcer, err := authz.NewEnforcer(logger, enforcerConfig)
+	if err != nil {
 		panic(err)
 	}
 
+	//secrets service and handler
+	secretEncryptionService, err := secret.NewEncryptionService(cfg.SecretEncryptionKey, logger)
+	if err != nil {
+		panic(err)
+	}
+	secretService := secret.NewSecretService(secretdb.New(dbConn), secretEncryptionService, logger)
+	secretHandler := secret.NewSecretHandler(secretService, logger)
+
+	// Provider service and handler
+
+	providerEncryptor, err := utils.NewEncryptor(cfg.ProviderEncryptionKey)
+	if err!=nil{
+		panic(err)
+	}
+	providerFactory := secretProvider.NewProviderFactory(logger)
+	providerService := secretProvider.NewProviderService(providerdb.New(dbConn), providerFactory, logger, providerEncryptor)
+	providerHandler:=secretProvider.NewProviderHandler(providerService,logger)
 	// Auth service and handler setup
 	authService := auth.NewAuthService(githubProvider, userdb.New(dbConn), jwter, logger)
 	authHandler := auth.NewAuthHandler(authService, logger)
 
 	//UserGroup service and handler setup
-	userGroupService := groups.NewUserGroupService(logger, groupsdb.New(dbConn), authService,authzEnforcer)
+	userGroupService := groups.NewUserGroupService(logger, groupsdb.New(dbConn), authService, authzEnforcer)
 	userGroupHandler := groups.NewUserGroupHandler(logger, userGroupService)
 
 	//IamService setup
 
-	iamService := iam.NewIamService(iam_db.New(dbConn), authService, userGroupService, logger,authzEnforcer)
+	iamService := iam.NewIamService(iam_db.New(dbConn), authService, userGroupService, logger, authzEnforcer)
 	iamHandler := iam.NewIamHandler(*iamService, logger)
 	// Organization service and handler setup
-	orgService := org.NewOrganizationService(orgdb.New(dbConn), logger, *iamService,authzEnforcer)
+	orgService := org.NewOrganizationService(orgdb.New(dbConn), logger, *iamService, authzEnforcer)
 	orgHandler := org.NewOrganizationHandler(orgService, logger)
 
 	//SecretGroup service and handler setup
-	groupService := secretgroup.NewSecretGroupService(secretgroupdb.New(dbConn), logger, *iamService,authzEnforcer)
+	groupService := secretgroup.NewSecretGroupService(secretgroupdb.New(dbConn), logger, *iamService, authzEnforcer)
 	groupHandler := secretgroup.NewSecretGroupHandler(groupService, logger)
 
 	//Environment service and handler setup
-	environmentService := environment.NewEnvironmentService(environmentdb.New(dbConn), logger, *iamService,authzEnforcer)
+	environmentService := environment.NewEnvironmentService(environmentdb.New(dbConn), logger, *iamService, authzEnforcer)
 	environmentHandler := environment.NewEnvironmentHandler(environmentService, logger)
 
 	// Create the HTTP server
 	s := server.New(cfg, logger)
 
-	authzMiddleware:=middleware.NewAuthMiddleware(authzEnforcer,logger)
+	authzMiddleware := middleware.NewAuthMiddleware(authzEnforcer, logger)
 
 	// Register all routes (auth, org, etc.)
-	s.SetupRoutes(authHandler, iamHandler, orgHandler, groupHandler, environmentHandler, userGroupHandler, jwter, cfg, logger,authzMiddleware)
+	s.SetupRoutes(authHandler, iamHandler, orgHandler,
+		 groupHandler, environmentHandler, userGroupHandler, secretHandler,providerHandler,
+		  jwter, cfg, logger, authzMiddleware)
 
 	// Start the server and log fatal on error
 	if err := s.Start(); err != nil {

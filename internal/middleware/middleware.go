@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -138,7 +139,9 @@ func (am *AuthMiddleware) isSpecialRoute(r *http.Request) bool {
 	path := am.trimAPIPrefix(r.URL.Path)
 	return strings.Contains(path, "/permissions/grant") ||
 		strings.Contains(path, "/permissions/revoke") ||
-		strings.Contains(path, "/members")
+		strings.Contains(path, "/members") ||
+		strings.Contains(path, "/secrets") ||
+		strings.Contains(path,"/providers")
 }
 
 // handleSpecialRoute handles authorization for special routes
@@ -159,7 +162,21 @@ func (am *AuthMiddleware) handleSpecialRoute(c *gin.Context, userID string) erro
 		return am.handleUserGroupMembers(c, userID)
 	}
 
+	// Handle secret routes
+	if strings.Contains(path, "/secrets") {
+		return am.handleSecretRoutes(c, userID)
+	}
+	//Handle provider routes 
+	if strings.Contains(path,"/providers"){
+		return am.handleProviderRoutes(c,userID)
+	}
+
 	return fmt.Errorf("unknown special route: %s", path)
+}
+
+func(am *AuthMiddleware) handleProviderRoutes(c context.Context,userID string)error{
+
+	return nil 
 }
 
 // handleGrantPermission handles authorization for granting permissions
@@ -426,6 +443,85 @@ func (am *AuthMiddleware) handleUserGroupMembers(c *gin.Context, userID string) 
 		"result":     "granted",
 		"reason":     explanations,
 	}).Info("User group members authorization successful")
+	return nil
+}
+
+// handleSecretRoutes handles authorization for secret routes
+func (am *AuthMiddleware) handleSecretRoutes(c *gin.Context, userID string) error {
+	// logEntry := am.logger.WithFields(logrus.Fields{
+	// 	"operation": "secret_routes",
+	// 	"user_id":   userID,
+	// 	"method":    c.Request.Method,
+	// })
+
+	// path := am.trimAPIPrefix(c.Request.URL.Path)
+	// logEntry = logEntry.WithField("path", path)
+
+	// logEntry.Info("Processing secret route authorization")
+
+	// // Extract organization ID, secret group ID, and environment ID from path
+	// // Path format: /organizations/{orgID}/secret-groups/{secretGroupID}/environments/{envID}/secrets/*
+	// parts := strings.Split(path, "/")
+	// if len(parts) < 7 {
+	// 	logEntry.WithField("error", "invalid_path_format").Error("Invalid secret route path")
+	// 	return fmt.Errorf("invalid secret route path: %s", path)
+	// }
+
+	// orgID := parts[2]
+	// secretGroupID := parts[4]
+	// envID := parts[6]
+	// parentResource := fmt.Sprintf("/organizations/%s/secret-groups/%s/environments/%s", orgID, secretGroupID, envID)
+
+	// logEntry = logEntry.WithFields(logrus.Fields{
+	// 	"organization_id": orgID,
+	// 	"secret_group_id": secretGroupID,
+	// 	"environment_id":  envID,
+	// 	"parent_resource": parentResource,
+	// })
+
+	// logEntry.Info("Path parsed successfully")
+
+	// // Determine action based on HTTP method
+	// var action string
+	// switch c.Request.Method {
+	// case "GET":
+	// 	action = "read" // For viewing secret versions and contents
+	// default:
+	// 	action = "write" // For creating new secret versions, rollback
+
+	// }
+
+	// logEntry = logEntry.WithField("action", action)
+	// logEntry.Info("Action determined successfully")
+
+	// // Check if user has permission on the parent environment resource
+	// logEntry.Info("Checking user permission on parent environment")
+	// hasPermission, explanations, err := am.enforcer.CheckPermissionEx(userID, action, parentResource)
+	// if err != nil {
+	// 	logEntry.WithFields(logrus.Fields{
+	// 		"error":      "permission_check_failed",
+	// 		"permission": action,
+	// 		"resource":   parentResource,
+	// 	}).Error("Failed to check permission")
+	// 	return fmt.Errorf("failed to check permission: %v", err)
+	// }
+
+	// if !hasPermission {
+	// 	logEntry.WithFields(logrus.Fields{
+	// 		"permission": action,
+	// 		"resource":   parentResource,
+	// 		"result":     "denied",
+	// 		"reason":     explanations,
+	// 	}).Warn("User does not have required permission on parent environment")
+	// 	return fmt.Errorf("user %s does not have %s permission on parent environment %s", userID, action, parentResource)
+	// }
+
+	// logEntry.WithFields(logrus.Fields{
+	// 	"permission": action,
+	// 	"resource":   parentResource,
+	// 	"result":     "granted",
+	// 	"reason":     explanations,
+	// }).Info("Secret route authorization successful")
 	return nil
 }
 

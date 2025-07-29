@@ -7,6 +7,8 @@ import (
 
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
 	"github.com/Gkemhcs/kavach-backend/internal/groups"
+	"github.com/Gkemhcs/kavach-backend/internal/provider"
+	"github.com/Gkemhcs/kavach-backend/internal/secret"
 
 	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	orgdb "github.com/Gkemhcs/kavach-backend/internal/org/gen"
@@ -39,11 +41,13 @@ func RegisterOrganizationRoutes(handler *OrganizationHandler,
 	secretGroupHandler *secretgroup.SecretGroupHandler,
 	environmentHandler *environment.EnvironmentHandler,
 	userGroupHandler *groups.UserGroupHandler,
+	secretHandler *secret.SecretHandler,
+	providerHandler *provider.ProviderHandler,
 	jwtMiddleware gin.HandlerFunc) {
 	orgGroup := routerGroup.Group("/organizations")
 	orgGroup.Use(jwtMiddleware)
 
-	secretgroup.RegisterSecretGroupRoutes(secretGroupHandler, orgGroup, environmentHandler, jwtMiddleware)
+	secretgroup.RegisterSecretGroupRoutes(secretGroupHandler, orgGroup, environmentHandler, secretHandler, providerHandler,jwtMiddleware)
 	groups.RegisterUserGroupRoutes(userGroupHandler, orgGroup, jwtMiddleware)
 	// Now register organization routes
 	orgGroup.GET("/by-name/:orgName", handler.GetOrganizationByName)

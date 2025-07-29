@@ -6,6 +6,8 @@ import (
 
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
 	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/provider"
+	"github.com/Gkemhcs/kavach-backend/internal/secret"
 
 	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	secretgroupdb "github.com/Gkemhcs/kavach-backend/internal/secretgroup/gen"
@@ -35,6 +37,8 @@ func NewSecretGroupHandler(service *SecretGroupService, logger *logrus.Logger) *
 func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 	orgGroup *gin.RouterGroup,
 	environmentHandler *environment.EnvironmentHandler,
+	secretHandler *secret.SecretHandler,
+	providerHandler *provider.ProviderHandler,
 	jwtMiddleware gin.HandlerFunc) {
 	// Register under /organizations/:orgID/secret-groups
 	secretGroup := orgGroup.Group(":orgID/secret-groups")
@@ -49,7 +53,7 @@ func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 		secretGroup.DELETE(":groupID", handler.Delete)
 	}
 
-	environment.RegisterEnvironmentRoutes(environmentHandler, secretGroup, jwtMiddleware)
+	environment.RegisterEnvironmentRoutes(environmentHandler, secretHandler, providerHandler, secretGroup, jwtMiddleware)
 }
 
 // ToSecretGroupResponse converts a secret group DB model to API response data.
@@ -209,12 +213,12 @@ func (h *SecretGroupHandler) Delete(c *gin.Context) {
 	groupID := c.Param("groupID")
 	err := h.service.DeleteSecretGroup(c.Request.Context(), userID, orgID, groupID)
 	if err != nil {
-		if err==apiErrors.ErrForeignKeyViolation{
-			apiErr:=err.(*apiErrors.APIError)
-			utils.RespondError(c,apiErr.Status,apiErr.Code,apiErr.Message)
-			return 
+		if err == apiErrors.ErrForeignKeyViolation {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
 		}
-	
+
 		utils.RespondError(c, http.StatusInternalServerError, "internal_error", "could not delete secret group")
 		return
 	}

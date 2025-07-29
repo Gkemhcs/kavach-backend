@@ -155,9 +155,9 @@ func (s *OrganizationService) UpdateOrganization(ctx context.Context, userID, or
 // DeleteOrganization deletes an organization by ID for the user.
 func (s *OrganizationService) DeleteOrganization(ctx context.Context, orgID string) error {
 	s.logger.Infof("Deleting organization org_id=%s ", orgID)
-	orgId,err:=uuid.Parse(orgID)
-	if err!=nil{
-		return err 
+	orgId, err := uuid.Parse(orgID)
+	if err != nil {
+		return err
 	}
 
 	err = s.repo.DeleteOrganization(ctx, orgId)
@@ -165,11 +165,11 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, orgID stri
 		if err == sql.ErrNoRows {
 			return appErrors.ErrOrganizationNotFound
 		}
-		if appErrors.IsViolatingForeignKeyConstraints(err){
+		if appErrors.IsViolatingForeignKeyConstraints(err) {
 			return appErrors.ErrForeignKeyViolation
 		}
-		
-		return err 
+
+		return err
 	}
 	params := iam.DeleteRoleBindingRequest{
 		ResourceID:   orgId,

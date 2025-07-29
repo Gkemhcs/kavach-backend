@@ -11,6 +11,8 @@ import (
 	"github.com/Gkemhcs/kavach-backend/internal/iam"
 	"github.com/Gkemhcs/kavach-backend/internal/middleware"
 	"github.com/Gkemhcs/kavach-backend/internal/org"
+	"github.com/Gkemhcs/kavach-backend/internal/provider"
+	"github.com/Gkemhcs/kavach-backend/internal/secret"
 	"github.com/Gkemhcs/kavach-backend/internal/secretgroup"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -31,6 +33,8 @@ func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,
 	secretgroupHandler *secretgroup.SecretGroupHandler,
 	environmentHandler *environment.EnvironmentHandler,
 	userGroupHandler *groups.UserGroupHandler,
+	secretHandler *secret.SecretHandler,
+	providerHandler *provider.ProviderHandler,
 	jwter *jwt.Manager,
 	cfg *config.Config,
 	logger *logrus.Logger,
@@ -49,7 +53,9 @@ func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,
 	protected.Use(authzMiddleware.Middleware())
 	// Register all other routes under the protected group
 	iam.RegisterIamRoutes(iamHandler, protected)
-	org.RegisterOrganizationRoutes(orgHandler, protected, secretgroupHandler, environmentHandler, userGroupHandler, jwtMiddleware)
+	org.RegisterOrganizationRoutes(orgHandler, protected, secretgroupHandler, environmentHandler,
+		userGroupHandler, secretHandler, providerHandler,
+		jwtMiddleware)
 
 	// Add other route groups here as needed
 	// Example: secrets.RegisterSecretRoutes(secretHandler, v1)

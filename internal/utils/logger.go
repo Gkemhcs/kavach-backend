@@ -15,7 +15,7 @@ func New(cfg *config.Config) *logrus.Logger {
 	log.SetFormatter(&logrus.JSONFormatter{
 		PrettyPrint: true,
 	})
-	
+
 	if cfg.Env == "development" {
 		log.SetLevel(logrus.DebugLevel)
 	} else {

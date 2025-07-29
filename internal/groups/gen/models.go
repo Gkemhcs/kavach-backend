@@ -7,6 +7,7 @@ package groupsdb
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -175,6 +176,17 @@ type Organization struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
+type ProviderCredential struct {
+	ID            uuid.UUID       `json:"id"`
+	EnvironmentID uuid.UUID       `json:"environment_id"`
+	Provider      string          `json:"provider"`
+	Credentials   []byte          `json:"credentials"`
+	Config        json.RawMessage `json:"config"`
+	CreatedBy     uuid.UUID       `json:"created_by"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+}
+
 type RoleBinding struct {
 	ID             uuid.UUID     `json:"id"`
 	UserID         uuid.NullUUID `json:"user_id"`
@@ -187,6 +199,13 @@ type RoleBinding struct {
 	SecretGroupID  uuid.NullUUID `json:"secret_group_id"`
 	EnvironmentID  uuid.NullUUID `json:"environment_id"`
 	GroupID        uuid.NullUUID `json:"group_id"`
+}
+
+type Secret struct {
+	ID             uuid.UUID `json:"id"`
+	VersionID      string    `json:"version_id"`
+	Name           string    `json:"name"`
+	ValueEncrypted []byte    `json:"value_encrypted"`
 }
 
 type SecretGroup struct {
@@ -202,6 +221,13 @@ type SecretGroupMember struct {
 	SecretGroupID uuid.UUID `json:"secret_group_id"`
 	UserID        uuid.UUID `json:"user_id"`
 	Role          RoleType  `json:"role"`
+}
+
+type SecretVersion struct {
+	ID            string    `json:"id"`
+	EnvironmentID uuid.UUID `json:"environment_id"`
+	CommitMessage string    `json:"commit_message"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type User struct {

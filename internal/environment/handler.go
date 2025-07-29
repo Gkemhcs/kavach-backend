@@ -7,6 +7,8 @@ import (
 	environmentdb "github.com/Gkemhcs/kavach-backend/internal/environment/gen"
 	appErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
 	iam_db "github.com/Gkemhcs/kavach-backend/internal/iam/gen"
+	"github.com/Gkemhcs/kavach-backend/internal/provider"
+	"github.com/Gkemhcs/kavach-backend/internal/secret"
 
 	"github.com/Gkemhcs/kavach-backend/internal/utils"
 	"github.com/gin-gonic/gin"
@@ -29,11 +31,15 @@ func NewEnvironmentHandler(service *EnvironmentService, logger *logrus.Logger) *
 // RegisterEnvironmentRoutes registers environment routes under a secret group with JWT middleware.
 // Centralizes route registration for maintainability and security.
 func RegisterEnvironmentRoutes(handler *EnvironmentHandler,
+	secretHandler *secret.SecretHandler,
+	providerHandler *provider.ProviderHandler,
 	secretGroup *gin.RouterGroup,
 	jwtMiddleware gin.HandlerFunc) {
 	envGroup := secretGroup.Group("/:groupID/environments")
 	envGroup.Use(jwtMiddleware)
 	{
+		secret.RegisterSecretRoutes(secretHandler, envGroup)
+		provider.RegisterProviderRoutes(providerHandler, envGroup)
 		envGroup.GET("/by-name/:envName", handler.GetEnvironmentByName)
 		envGroup.POST("/", handler.Create)
 		envGroup.GET("/", handler.List)
@@ -47,25 +53,25 @@ func RegisterEnvironmentRoutes(handler *EnvironmentHandler,
 // ToEnvironmentResponse converts an environment DB model to API response data.
 func ToEnvironmentResponse(environment *environmentdb.GetEnvironmentByNameRow) EnvironmentResponseData {
 	return EnvironmentResponseData{
-		Name:          environment.Name,
-		Description:   toNullableString(environment.Description),
-		SecretGroupID: environment.SecretGroupID.String(),
-		CreatedAt:     environment.CreatedAt,
-		UpdatedAt:     environment.UpdatedAt,
-		ID:            environment.ID.String(),
+		Name:           environment.Name,
+		Description:    toNullableString(environment.Description),
+		SecretGroupID:  environment.SecretGroupID.String(),
+		CreatedAt:      environment.CreatedAt,
+		UpdatedAt:      environment.UpdatedAt,
+		ID:             environment.ID.String(),
 		OrganizationID: environment.OrganizationID.String(),
 	}
 }
 
-
-func ToListAccessibleEnvironmentsRow(env iam_db.ListAccessibleEnvironmentsRow)ListAccessibleEnvironmentsRow{
+func ToListAccessibleEnvironmentsRow(env iam_db.ListAccessibleEnvironmentsRow) ListAccessibleEnvironmentsRow {
 	return ListAccessibleEnvironmentsRow{
-		ID: env.ID.UUID.String(),
-		Name: env.Name,
+		ID:              env.ID.UUID.String(),
+		Name:            env.Name,
 		SecretGroupName: env.SecretGroupName,
-		Role: string(env.Role),
+		Role:            string(env.Role),
 	}
 }
+
 // toNullableString safely converts sql.NullString to *string for JSON marshalling.
 func toNullableString(ns sql.NullString) *string {
 	if ns.Valid {
@@ -146,8 +152,8 @@ func (h *EnvironmentHandler) ListMyEnvironments(c *gin.Context) {
 	}
 	var listEnvRows []ListAccessibleEnvironmentsRow
 
-	for _,env := range envs{
-		listEnvRows=append(listEnvRows,ToListAccessibleEnvironmentsRow(env))
+	for _, env := range envs {
+		listEnvRows = append(listEnvRows, ToListAccessibleEnvironmentsRow(env))
 	}
 
 	utils.RespondSuccess(c, http.StatusOK, listEnvRows)

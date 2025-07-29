@@ -177,7 +177,7 @@ func (s *SecretGroupService) DeleteSecretGroup(ctx context.Context, userID, orgI
 		return appErrors.ErrInternalServer
 	}
 	err = s.repo.DeleteSecretGroup(ctx, groupUUID)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return appErrors.ErrNotFound

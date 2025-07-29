@@ -16,9 +16,9 @@ type CreateSecretGroupRequest struct {
 
 type ListAccessibleSecretGroupsRow struct {
 	ID               string `json:"id"`
-	SecretGroupName  string  `json:"name"`
-	OrganizationName string  `json:"organization_name"`
-	Role             string  `json:"role"`
+	SecretGroupName  string `json:"name"`
+	OrganizationName string `json:"organization_name"`
+	Role             string `json:"role"`
 }
 
 // UpdateSecretGroupRequest is the request body for updating a secret group.
