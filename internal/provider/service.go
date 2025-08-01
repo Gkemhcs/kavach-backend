@@ -417,15 +417,15 @@ func (s *ProviderService) validateProviderData(provider ProviderType, credential
 func (s *ProviderService) validateGitHubData(credentials, config map[string]interface{}) error {
 	// Validate credentials
 	if token, ok := credentials["token"].(string); !ok || token == "" {
-		return appErrors.ErrInvalidProviderData
+		return appErrors.ErrProviderCredentialValidationFailed
 	}
 
 	// Validate config
 	if owner, ok := config["owner"].(string); !ok || owner == "" {
-		return appErrors.ErrInvalidProviderData
+		return appErrors.ErrProviderCredentialValidationFailed
 	}
 	if repo, ok := config["repository"].(string); !ok || repo == "" {
-		return appErrors.ErrInvalidProviderData
+		return appErrors.ErrProviderCredentialValidationFailed
 	}
 
 	return nil
@@ -436,13 +436,13 @@ func (s *ProviderService) validateGCPData(credentials, config map[string]interfa
 	requiredCredFields := []string{"type", "project_id", "private_key_id", "private_key", "client_email"}
 	for _, field := range requiredCredFields {
 		if val, ok := credentials[field].(string); !ok || val == "" {
-			return appErrors.ErrInvalidProviderData
+			return appErrors.ErrProviderCredentialValidationFailed
 		}
 	}
 
 	// Validate config
 	if projectID, ok := config["project_id"].(string); !ok || projectID == "" {
-		return appErrors.ErrInvalidProviderData
+		return appErrors.ErrProviderCredentialValidationFailed
 	}
 
 	return nil

@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
 // CreateProviderCredentialRequest represents the request to create a new provider credential
 type CreateProviderCredentialRequest struct {
 	Provider    ProviderType           `json:"provider" binding:"required"`
@@ -36,12 +35,21 @@ type GitHubCredentials struct {
 	Token string `json:"token" binding:"required"`
 }
 
+// RetryConfig represents retry configuration for provider operations
+type RetryConfig struct {
+	MaxRetries  int           `json:"max_retries"`  // Maximum number of retry attempts
+	RetryDelay  time.Duration `json:"retry_delay"`  // Initial delay between retries
+	MaxDelay    time.Duration `json:"max_delay"`    // Maximum delay between retries
+	BackoffType string        `json:"backoff_type"` // "exponential", "linear", "constant"
+}
+
 // GitHubConfig represents GitHub-specific configuration
 type GitHubConfig struct {
-	Owner            string `json:"owner" binding:"required"`
-	Repository       string `json:"repository" binding:"required"`
-	Environment      string `json:"environment,omitempty"`
-	SecretVisibility string `json:"secret_visibility,omitempty"` // all, selected, private
+	Owner            string      `json:"owner" binding:"required"`
+	Repository       string      `json:"repository" binding:"required"`
+	Environment      string      `json:"environment,omitempty"`
+	SecretVisibility string      `json:"secret_visibility,omitempty"` // all, selected, private
+	RetryConfig      RetryConfig `json:"retry_config,omitempty"`
 }
 
 // GCPCredentials represents GCP Service Account key credentials
@@ -60,10 +68,12 @@ type GCPCredentials struct {
 
 // GCPConfig represents GCP-specific configuration
 type GCPConfig struct {
-	ProjectID             string `json:"project_id" binding:"required"`
-	SecretManagerLocation string `json:"secret_manager_location,omitempty"`
-	Prefix                string `json:"prefix,omitempty"`
-	Replication           string `json:"replication,omitempty"`
+	ProjectID             string      `json:"project_id" binding:"required"`
+	SecretManagerLocation string      `json:"secret_manager_location,omitempty"`
+	Prefix                string      `json:"prefix,omitempty"`
+	Replication           string      `json:"replication,omitempty"`
+	DisableOlderVersions  bool        `json:"disable_older_versions,omitempty"` // If true, disable older versions when adding new ones
+	RetryConfig           RetryConfig `json:"retry_config,omitempty"`
 }
 
 // AzureCredentials represents Azure Service Principal credentials
@@ -75,10 +85,12 @@ type AzureCredentials struct {
 
 // AzureConfig represents Azure-specific configuration
 type AzureConfig struct {
-	SubscriptionID string `json:"subscription_id" binding:"required"`
-	ResourceGroup  string `json:"resource_group" binding:"required"`
-	KeyVaultName   string `json:"key_vault_name" binding:"required"`
-	Prefix         string `json:"prefix,omitempty"`
+	SubscriptionID       string      `json:"subscription_id" binding:"required"`
+	ResourceGroup        string      `json:"resource_group" binding:"required"`
+	KeyVaultName         string      `json:"key_vault_name" binding:"required"`
+	Prefix               string      `json:"prefix,omitempty"`
+	DisableOlderVersions bool        `json:"disable_older_versions,omitempty"` // If true, disable older versions when adding new ones
+	RetryConfig          RetryConfig `json:"retry_config,omitempty"`
 }
 
 // SyncRequest represents the request to sync secrets to a provider

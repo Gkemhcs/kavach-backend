@@ -73,6 +73,9 @@ func (h *ProviderHandler) CreateProviderCredential(c *gin.Context) {
 		case appErrors.ErrInvalidProviderData:
 			utils.RespondError(c, appErrors.ErrInvalidProviderData.Status, appErrors.ErrInvalidProviderData.Code, appErrors.ErrInvalidProviderData.Message)
 			return
+		case appErrors.ErrProviderCredentialValidationFailed:
+			utils.RespondError(c, appErrors.ErrProviderCredentialValidationFailed.Status, appErrors.ErrProviderCredentialValidationFailed.Code, appErrors.ErrProviderCredentialValidationFailed.Message)
+			return
 		case appErrors.ErrProviderCredentialExists:
 			utils.RespondError(c, appErrors.ErrProviderCredentialExists.Status, appErrors.ErrProviderCredentialExists.Code, appErrors.ErrProviderCredentialExists.Message)
 			return

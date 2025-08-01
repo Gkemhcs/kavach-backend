@@ -36,7 +36,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("DB_PASSWORD", "gkem1234")
 	viper.SetDefault("DB_NAME", "kavach_db")
 	viper.SetDefault("DB_PORT", "5432")
-	viper.SetDefault("ACCESS_TOKEN_DURATION", 10)    // 10 minutes
+	viper.SetDefault("ACCESS_TOKEN_DURATION", 1000)  // 10 minutes
 	viper.SetDefault("REFRESH_TOKEN_DURATION", 1440) // 1 day in minutes
 	viper.SetDefault("MODEL_FILE_PATH", "internal/authz/model.conf")
 	viper.SetDefault("ENCRYPTION_KEY", "RhK7KoKSwOuFOHxONMNaO9Z9pDgJKwZjaNhcbgZ7Qqc=")

@@ -74,23 +74,22 @@ func main() {
 		panic(err)
 	}
 
+	// Provider service and handler
+	providerEncryptor, err := utils.NewEncryptor(cfg.ProviderEncryptionKey)
+	if err != nil {
+		panic(err)
+	}
+	providerFactory := secretProvider.NewProviderFactory(logger)
+	providerService := secretProvider.NewProviderService(providerdb.New(dbConn), providerFactory, logger, providerEncryptor)
+	providerHandler := secretProvider.NewProviderHandler(providerService, logger)
+
 	//secrets service and handler
 	secretEncryptionService, err := secret.NewEncryptionService(cfg.SecretEncryptionKey, logger)
 	if err != nil {
 		panic(err)
 	}
-	secretService := secret.NewSecretService(secretdb.New(dbConn), secretEncryptionService, logger)
+	secretService := secret.NewSecretService(secretdb.New(dbConn), secretEncryptionService, providerService, logger)
 	secretHandler := secret.NewSecretHandler(secretService, logger)
-
-	// Provider service and handler
-
-	providerEncryptor, err := utils.NewEncryptor(cfg.ProviderEncryptionKey)
-	if err!=nil{
-		panic(err)
-	}
-	providerFactory := secretProvider.NewProviderFactory(logger)
-	providerService := secretProvider.NewProviderService(providerdb.New(dbConn), providerFactory, logger, providerEncryptor)
-	providerHandler:=secretProvider.NewProviderHandler(providerService,logger)
 	// Auth service and handler setup
 	authService := auth.NewAuthService(githubProvider, userdb.New(dbConn), jwter, logger)
 	authHandler := auth.NewAuthHandler(authService, logger)
@@ -122,8 +121,8 @@ func main() {
 
 	// Register all routes (auth, org, etc.)
 	s.SetupRoutes(authHandler, iamHandler, orgHandler,
-		 groupHandler, environmentHandler, userGroupHandler, secretHandler,providerHandler,
-		  jwter, cfg, logger, authzMiddleware)
+		groupHandler, environmentHandler, userGroupHandler, secretHandler, providerHandler,
+		jwter, cfg, logger, authzMiddleware)
 
 	// Start the server and log fatal on error
 	if err := s.Start(); err != nil {

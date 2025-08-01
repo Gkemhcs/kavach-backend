@@ -84,3 +84,31 @@ type PushToProviderRequest struct {
 	Provider string            `json:"provider" binding:"required"` // "github", "gcp", etc.
 	Config   map[string]string `json:"config" binding:"required"`   // Provider-specific configuration
 }
+
+// SyncSecretsRequest represents the request to sync secrets to a provider
+type SyncSecretsRequest struct {
+	Provider  string `json:"provider" binding:"required"`
+	VersionID string `json:"version_id,omitempty"` // Optional: sync specific version, otherwise latest
+}
+
+// SyncResult represents the result of syncing a single secret
+type SyncResult struct {
+	Name    string `json:"name"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+}
+
+// SyncSecretsResponse represents the response for a sync operation
+type SyncSecretsResponse struct {
+	Provider    string       `json:"provider"`
+	Status      string       `json:"status"` // success, failed, partial
+	Message     string       `json:"message"`
+	SyncedCount int          `json:"synced_count"`
+	FailedCount int          `json:"failed_count"`
+	TotalCount  int          `json:"total_count"`
+	Results     []SyncResult `json:"results"`
+	Errors      []string     `json:"errors,omitempty"`
+	Warnings    []string     `json:"warnings,omitempty"`
+	SyncedAt    string       `json:"synced_at"`
+	VersionID   string       `json:"version_id,omitempty"`
+}

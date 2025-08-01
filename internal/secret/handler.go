@@ -32,6 +32,7 @@ func RegisterSecretRoutes(handler *SecretHandler, envGroup *gin.RouterGroup) {
 		secretsGroup.GET("/versions/:versionID", handler.GetVersionDetails)
 		secretsGroup.POST("/rollback", handler.RollbackToVersion)
 		secretsGroup.GET("/diff", handler.GetVersionDiff)
+		secretsGroup.POST("/sync", handler.SyncSecrets)
 	}
 }
 
@@ -298,4 +299,74 @@ func (h *SecretHandler) GetVersionDiff(c *gin.Context) {
 	logEntry.WithField("change_count", len(diff.Changes)).Info("Successfully generated version diff")
 
 	utils.RespondSuccess(c, http.StatusOK, diff)
+}
+
+// SyncSecrets handles POST /orgs/:orgID/secret-groups/:groupID/environments/:envID/secrets/sync
+func (h *SecretHandler) SyncSecrets(c *gin.Context) {
+	environmentID := c.Param("envID")
+
+	logEntry := h.logger.WithFields(logrus.Fields{
+		"handler":        "SyncSecrets",
+		"environment_id": environmentID,
+		"method":         c.Request.Method,
+		"path":           c.Request.URL.Path,
+	})
+
+	logEntry.Info("Processing sync secrets request")
+
+	var req SyncSecretsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logEntry.WithField("error", err.Error()).Error("Failed to bind request body")
+		utils.RespondError(c, appErrors.ErrInvalidBody.Status, appErrors.ErrInvalidBody.Code, appErrors.ErrInvalidBody.Message)
+		return
+	}
+
+	logEntry.WithFields(logrus.Fields{
+		"provider":   req.Provider,
+		"version_id": req.VersionID,
+	}).Info("Request validated successfully")
+
+	result, err := h.service.SyncSecrets(c.Request.Context(), environmentID, req)
+	if err != nil {
+		logEntry.WithField("error", err.Error()).Error("Failed to sync secrets")
+		switch err {
+		case appErrors.ErrNoSecretsToSync:
+			utils.RespondError(c, appErrors.ErrNoSecretsToSync.Status, appErrors.ErrNoSecretsToSync.Code, appErrors.ErrNoSecretsToSync.Message)
+			return
+		case appErrors.ErrProviderSyncFailed:
+			utils.RespondError(c, appErrors.ErrProviderSyncFailed.Status, appErrors.ErrProviderSyncFailed.Code, appErrors.ErrProviderSyncFailed.Message)
+			return
+		case appErrors.ErrProviderCredentialNotFound:
+			utils.RespondError(c, appErrors.ErrProviderCredentialNotFound.Status, appErrors.ErrProviderCredentialNotFound.Code, appErrors.ErrProviderCredentialNotFound.Message)
+			return
+		case appErrors.ErrProviderCredentialValidationFailed:
+			utils.RespondError(c, appErrors.ErrProviderCredentialValidationFailed.Status, appErrors.ErrProviderCredentialValidationFailed.Code, appErrors.ErrProviderCredentialValidationFailed.Message)
+			return
+		case appErrors.ErrGitHubEnvironmentNotFound:
+			utils.RespondError(c, appErrors.ErrGitHubEnvironmentNotFound.Status, appErrors.ErrGitHubEnvironmentNotFound.Code, appErrors.ErrGitHubEnvironmentNotFound.Message)
+			return
+		case appErrors.ErrGitHubEncryptionFailed:
+			utils.RespondError(c, appErrors.ErrGitHubEncryptionFailed.Status, appErrors.ErrGitHubEncryptionFailed.Code, appErrors.ErrGitHubEncryptionFailed.Message)
+			return
+		case appErrors.ErrInvalidProviderType:
+			utils.RespondError(c, appErrors.ErrInvalidProviderType.Status, appErrors.ErrInvalidProviderType.Code, appErrors.ErrInvalidProviderType.Message)
+			return
+		case appErrors.ErrInternalServer:
+			utils.RespondError(c, appErrors.ErrInternalServer.Status, appErrors.ErrInternalServer.Code, appErrors.ErrInternalServer.Message)
+			return
+		default:
+			utils.RespondError(c, http.StatusInternalServerError, "sync_secrets_failed", err.Error())
+			return
+		}
+	}
+
+	logEntry.WithFields(logrus.Fields{
+		"provider":     result.Provider,
+		"status":       result.Status,
+		"synced_count": result.SyncedCount,
+		"failed_count": result.FailedCount,
+		"total_count":  result.TotalCount,
+	}).Info("Successfully synced secrets to provider")
+
+	utils.RespondSuccess(c, http.StatusOK, result)
 }

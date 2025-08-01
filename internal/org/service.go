@@ -51,6 +51,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, req Create
 		return nil, appErrors.ErrDuplicateOrganization
 	}
 	if err != nil {
+		s.logger.Error(err)
 		return nil, appErrors.ErrInternalServer
 	}
 	createBindingParams := iam.CreateRoleBindingRequest{

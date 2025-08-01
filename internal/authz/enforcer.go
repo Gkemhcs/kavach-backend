@@ -2,6 +2,7 @@ package authz
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/casbin/casbin/v2"
 	sqladapter "github.com/memwey/casbin-sqlx-adapter"
@@ -325,6 +326,7 @@ func (e *Enforcer) CheckPermission(userID, action, resource string) (bool, error
 
 	e.logger.Infof("🔍 [CAS] Checking permission - User: %s, Action: %s, Resource: %s", userSubject, action, resource)
 
+	// First, try direct permission check
 	ok, err := e.enforcer.Enforce(userSubject, action, resource)
 	if err != nil {
 		e.logger.Errorf("❌ [CAS] Failed to check permission [%s, %s, %s]: %v", userSubject, action, resource, err)
@@ -333,30 +335,84 @@ func (e *Enforcer) CheckPermission(userID, action, resource string) (bool, error
 
 	if ok {
 		e.logger.Infof("✅ [CAS] Permission GRANTED - %s can %s on %s", userSubject, action, resource)
-	} else {
-		e.logger.Infof("❌ [CAS] Permission DENIED - %s cannot %s on %s", userSubject, action, resource)
-
-		// Additional debugging: show what policies exist for this user and resource
-		e.logger.Infof("🔍 [CAS] Debugging permission denial...")
-
-		// Get all policies for this user
-		policies, _ := e.enforcer.GetFilteredPolicy(0, userSubject)
-		e.logger.Infof("📋 [CAS] All policies for user %s: %v", userSubject, policies)
-
-		// Get all policies for this resource
-		resourcePolicies, _ := e.enforcer.GetFilteredPolicy(2, resource)
-		e.logger.Infof("📋 [CAS] All policies for resource %s: %v", resource, resourcePolicies)
-
-		// Get user's roles
-		roles, _ := e.enforcer.GetRolesForUser(userSubject)
-		e.logger.Infof("📋 [CAS] User %s has roles: %v", userSubject, roles)
-
-		// Get all grouping policies
-		groupings, _ := e.enforcer.GetGroupingPolicy()
-		e.logger.Infof("📋 [CAS] All grouping policies: %v", groupings)
+		return true, nil
 	}
 
-	return ok, nil
+	e.logger.Infof("❌ [CAS] Permission DENIED - %s cannot %s on %s", userSubject, action, resource)
+
+	// Additional debugging: show what policies exist for this user and resource
+	e.logger.Infof("🔍 [CAS] Debugging permission denial...")
+
+	// Get all policies for this user
+	policies, _ := e.enforcer.GetFilteredPolicy(0, userSubject)
+	e.logger.Infof("📋 [CAS] All policies for user %s: %v", userSubject, policies)
+
+	// Get all policies for this resource
+	resourcePolicies, _ := e.enforcer.GetFilteredPolicy(2, resource)
+	e.logger.Infof("📋 [CAS] All policies for resource %s: %v", resource, resourcePolicies)
+
+	// Get user's roles
+	roles, _ := e.enforcer.GetRolesForUser(userSubject)
+	e.logger.Infof("📋 [CAS] User %s has roles: %v", userSubject, roles)
+
+	// Get all grouping policies
+	groupings, _ := e.enforcer.GetGroupingPolicy()
+	e.logger.Infof("📋 [CAS] All grouping policies: %v", groupings)
+
+	// Get all resource hierarchy policies (g2)
+	g2Policies, _ := e.enforcer.GetNamedGroupingPolicy("g2")
+	e.logger.Infof("📋 [CAS] All resource hierarchy policies (g2): %v", g2Policies)
+
+	// Check for inherited permissions from parent resources
+	e.logger.Infof("🔍 [CAS] Checking for inherited permissions from parent resources...")
+	
+	// Try to find parent resources and check permissions there
+	parentResources := e.getParentResources(resource)
+	for _, parentResource := range parentResources {
+		e.logger.Infof("🔍 [CAS] Checking parent resource: %s", parentResource)
+		
+		// Check if user has permission on parent resource
+		parentOk, parentErr := e.enforcer.Enforce(userSubject, action, parentResource)
+		if parentErr != nil {
+			e.logger.Errorf("❌ [CAS] Failed to check parent permission [%s, %s, %s]: %v", userSubject, action, parentResource, parentErr)
+			continue
+		}
+		
+		if parentOk {
+			e.logger.Infof("✅ [CAS] Inherited permission GRANTED - %s can %s on parent %s", userSubject, action, parentResource)
+			return true, nil
+		} else {
+			e.logger.Infof("❌ [CAS] No inherited permission on parent %s", parentResource)
+		}
+	}
+
+	e.logger.Infof("❌ [CAS] No direct or inherited permissions found")
+	
+	// Add comprehensive debugging when permission is denied
+	e.logger.Infof("🔍 [CAS] === COMPREHENSIVE DEBUGGING ===")
+	e.DebugUserPermissions(userID)
+	e.DebugResourcePermissions(resource)
+	e.logger.Infof("🔍 [CAS] === END COMPREHENSIVE DEBUGGING ===")
+	
+	return false, nil
+}
+
+// getParentResources returns all possible parent resources for a given resource
+func (e *Enforcer) getParentResources(resource string) []string {
+	var parents []string
+	
+	// Split the resource path
+	parts := strings.Split(resource, "/")
+	
+	// Build parent resources by removing the last part
+	for i := len(parts) - 1; i >= 2; i-- { // Start from 2 to keep at least /organizations/{orgID}
+		parent := strings.Join(parts[:i], "/")
+		if parent != "" {
+			parents = append(parents, parent)
+		}
+	}
+	
+	return parents
 }
 
 // CheckPermissionEx checks if a user has permission to perform an action on a resource using EnforceEx

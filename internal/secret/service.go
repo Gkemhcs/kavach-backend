@@ -3,8 +3,10 @@ package secret
 import (
 	"context"
 	"fmt"
+	"time"
 
 	apiErrors "github.com/Gkemhcs/kavach-backend/internal/errors"
+	"github.com/Gkemhcs/kavach-backend/internal/provider"
 	secretdb "github.com/Gkemhcs/kavach-backend/internal/secret/gen"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -12,17 +14,19 @@ import (
 
 // SecretService handles business logic for secret management
 type SecretService struct {
-	repo    secretdb.Querier
-	encrypt *EncryptionService
-	logger  *logrus.Logger
+	repo            secretdb.Querier
+	encrypt         *EncryptionService
+	providerService *provider.ProviderService
+	logger          *logrus.Logger
 }
 
 // NewSecretService creates a new secret service
-func NewSecretService(repo secretdb.Querier, encrypt *EncryptionService, logger *logrus.Logger) *SecretService {
+func NewSecretService(repo secretdb.Querier, encrypt *EncryptionService, providerService *provider.ProviderService, logger *logrus.Logger) *SecretService {
 	return &SecretService{
-		repo:    repo,
-		encrypt: encrypt,
-		logger:  logger,
+		repo:            repo,
+		encrypt:         encrypt,
+		providerService: providerService,
+		logger:          logger,
 	}
 }
 
@@ -367,4 +371,124 @@ func (s *SecretService) validateCreateVersionRequest(req CreateSecretVersionRequ
 	}
 
 	return nil
+}
+
+// SyncSecrets syncs secrets to an external provider
+func (s *SecretService) SyncSecrets(ctx context.Context, environmentID string, req SyncSecretsRequest) (*SyncSecretsResponse, error) {
+	logEntry := s.logger.WithFields(logrus.Fields{
+		"method":         "SyncSecrets",
+		"environment_id": environmentID,
+		"provider":       req.Provider,
+		"version_id":     req.VersionID,
+	})
+
+	logEntry.Info("Starting secret sync to provider")
+
+	// Get the latest version if no specific version is provided
+	versionID := req.VersionID
+	if versionID == "" {
+		versions, err := s.ListVersions(ctx, environmentID)
+		if err != nil {
+			logEntry.WithField("error", err.Error()).Error("Failed to get latest version")
+			return nil, fmt.Errorf("failed to get latest version: %w", err)
+		}
+		if len(versions) == 0 {
+			logEntry.Error("No versions found for environment")
+			return nil, apiErrors.ErrNoSecretsToSync
+		}
+		versionID = versions[0].ID
+		logEntry.WithField("version_id", versionID).Info("Using latest version for sync")
+	}
+
+	// Get version details to get the secrets
+	versionDetails, err := s.GetVersionDetails(ctx, versionID)
+	if err != nil {
+		logEntry.WithField("error", err.Error()).Error("Failed to get version details")
+		return nil, fmt.Errorf("failed to get version details: %w", err)
+	}
+
+	if len(versionDetails.Secrets) == 0 {
+		logEntry.Error("No secrets found in version")
+		return nil, apiErrors.ErrNoSecretsToSync
+	}
+
+	// Get provider syncer
+	providerSyncer, err := s.providerService.GetProviderSyncer(ctx, environmentID, req.Provider)
+	if err != nil {
+		logEntry.WithField("error", err.Error()).Error("Failed to get provider syncer")
+		// Return the specific error from provider service
+		return nil, err
+	}
+
+	// Convert secrets to provider format
+	providerSecrets := make([]provider.Secret, len(versionDetails.Secrets))
+	for i, secret := range versionDetails.Secrets {
+		providerSecrets[i] = provider.Secret{
+			Name:  secret.Name,
+			Value: secret.Value,
+		}
+	}
+
+	// Sync secrets to provider
+	syncResults, err := providerSyncer.Sync(ctx, providerSecrets)
+	if err != nil {
+		logEntry.WithField("error", err.Error()).Error("Failed to sync secrets to provider")
+		return nil, apiErrors.ErrProviderSyncFailed
+	}
+
+	// Process results
+	successCount := 0
+	failedCount := 0
+	var errors []string
+	results := make([]SyncResult, len(syncResults))
+
+	for i, result := range syncResults {
+		results[i] = SyncResult{
+			Name:    result.Name,
+			Success: result.Success,
+			Error:   result.Error,
+		}
+		if result.Success {
+			successCount++
+		} else {
+			failedCount++
+			if result.Error != "" {
+				errors = append(errors, result.Error)
+			}
+		}
+	}
+
+	// Determine status
+	status := "success"
+	if failedCount > 0 {
+		if successCount > 0 {
+			status = "partial"
+		} else {
+			status = "failed"
+		}
+	}
+
+	message := fmt.Sprintf("Synced %d secrets to %s provider", successCount, req.Provider)
+	if failedCount > 0 {
+		message = fmt.Sprintf("Synced %d secrets, %d failed to %s provider", successCount, failedCount, req.Provider)
+	}
+
+	logEntry.WithFields(logrus.Fields{
+		"synced_count": successCount,
+		"failed_count": failedCount,
+		"total_count":  len(providerSecrets),
+		"status":       status,
+	}).Info("Secret sync completed")
+
+	return &SyncSecretsResponse{
+		Provider:    req.Provider,
+		Status:      status,
+		Message:     message,
+		SyncedCount: successCount,
+		FailedCount: failedCount,
+		TotalCount:  len(providerSecrets),
+		Results:     results,
+		Errors:      errors,
+		SyncedAt:    time.Now().Format(time.RFC3339),
+	}, nil
 }
