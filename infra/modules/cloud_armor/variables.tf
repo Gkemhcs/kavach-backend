@@ -28,10 +28,7 @@ variable "backend_service_group" {
   type        = string
 }
 
-variable "health_check_id" {
-  description = "Health check ID"
-  type        = string
-}
+# Health check variable removed - not supported with Serverless NEGs for Cloud Run
 
 variable "blocked_ips" {
   description = "List of IP addresses to block"

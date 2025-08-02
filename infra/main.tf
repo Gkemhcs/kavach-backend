@@ -124,7 +124,7 @@ module "cloud_run" {
   min_instances   = var.cloud_run_min_instances
   timeout_seconds = var.cloud_run_timeout_seconds
   service_account = module.iam.cloud_run_service_account_email
-  allow_unauthenticated = false
+  allow_unauthenticated = true  # Required for load balancer access
 }
 
 # Load Balancer Module
@@ -152,7 +152,6 @@ module "cloud_armor" {
   region               = var.region
   backend_service_name = module.load_balancer.backend_service_name
   backend_service_group = module.load_balancer.network_endpoint_group_id
-  health_check_id      = module.load_balancer.health_check_id
   blocked_ips          = []
   custom_rules         = var.cloud_armor_rules
 }
@@ -165,6 +164,7 @@ module "dns" {
   environment   = var.environment
   domain_name   = var.domain_name
   load_balancer_ip = module.load_balancer.load_balancer_ip
+  load_balancer_ipv6 = module.load_balancer.load_balancer_ipv6
   dns_zone_name = var.dns_zone_name
 }
 

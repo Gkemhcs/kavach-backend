@@ -14,7 +14,12 @@ variable "domain_name" {
 }
 
 variable "load_balancer_ip" {
-  description = "The IP address of the load balancer"
+  description = "The IPv4 address of the load balancer"
+  type        = string
+}
+
+variable "load_balancer_ipv6" {
+  description = "The IPv6 address of the load balancer"
   type        = string
 }
 

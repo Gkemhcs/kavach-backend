@@ -1,9 +1,21 @@
-# Google Cloud Load Balancer for Cloud Run
+# Google Cloud Load Balancer for Cloud Run - IPv4
 resource "google_compute_global_address" "lb_ip" {
   name         = "${var.lb_name}-ip-${var.environment}"
   project      = var.project_id
   address_type = "EXTERNAL"
   ip_version   = "IPV4"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Google Cloud Load Balancer for Cloud Run - IPv6
+resource "google_compute_global_address" "lb_ipv6" {
+  name         = "${var.lb_name}-ipv6-${var.environment}"
+  project      = var.project_id
+  address_type = "EXTERNAL"
+  ip_version   = "IPV6"
 
   lifecycle {
     prevent_destroy = true
@@ -37,7 +49,8 @@ resource "google_compute_backend_service" "backend" {
     group = google_compute_region_network_endpoint_group.neg.id
   }
 
-  health_checks = [google_compute_health_check.health_check.id]
+  # Note: Health checks are not supported with Serverless NEGs for Cloud Run
+  # Cloud Run handles health checks internally
 
   log_config {
     enable = true
@@ -104,7 +117,7 @@ resource "google_compute_target_http_proxy" "http_proxy" {
   count   = var.enable_ssl ? 1 : 0
   name    = "${var.lb_name}-http-proxy-${var.environment}"
   project = var.project_id
-  url_map = google_compute_url_map.url_map.id
+  url_map = google_compute_url_map.redirect_url_map[0].id
 
   lifecycle {
     prevent_destroy = true
@@ -123,7 +136,7 @@ resource "google_compute_target_http_proxy" "http_proxy_no_ssl" {
   }
 }
 
-# Global Forwarding Rule for HTTPS
+# Global Forwarding Rule for HTTPS (IPv4)
 resource "google_compute_global_forwarding_rule" "https_forwarding_rule" {
   count      = var.enable_ssl ? 1 : 0
   name       = "${var.lb_name}-https-forwarding-rule-${var.environment}"
@@ -131,6 +144,20 @@ resource "google_compute_global_forwarding_rule" "https_forwarding_rule" {
   target     = google_compute_target_https_proxy.https_proxy[0].id
   port_range = "443"
   ip_address = google_compute_global_address.lb_ip.address
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Global Forwarding Rule for HTTPS (IPv6)
+resource "google_compute_global_forwarding_rule" "https_forwarding_rule_ipv6" {
+  count      = var.enable_ssl ? 1 : 0
+  name       = "${var.lb_name}-https-forwarding-rule-ipv6-${var.environment}"
+  project    = var.project_id
+  target     = google_compute_target_https_proxy.https_proxy[0].id
+  port_range = "443"
+  ip_address = google_compute_global_address.lb_ipv6.address
 
   lifecycle {
     prevent_destroy = true

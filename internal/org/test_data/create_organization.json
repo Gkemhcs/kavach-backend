@@ -1,0 +1,129 @@
+{
+  "test_cases": [
+    {
+      "name": "success_valid_organization_creation",
+      "description": "Should successfully create an organization with valid data",
+      "input": {
+        "name": "Test Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "status_code": 201,
+        "success": true,
+        "data": {
+          "name": "Test Organization",
+          "description": "A test organization for unit testing"
+        }
+      }
+    },
+    {
+      "name": "error_missing_name",
+      "description": "Should fail when organization name is missing",
+      "input": {
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "status_code": 400,
+        "success": false,
+        "error": "Name is required"
+      }
+    },
+    {
+      "name": "error_empty_name",
+      "description": "Should fail when organization name is empty",
+      "input": {
+        "name": "",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "status_code": 400,
+        "success": false,
+        "error": "Name cannot be empty"
+      }
+    },
+    {
+      "name": "error_invalid_user_id",
+      "description": "Should fail when user ID is not a valid UUID",
+      "input": {
+        "name": "Test Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "invalid-uuid"
+      },
+      "expected": {
+        "status_code": 400,
+        "success": false,
+        "error": "Invalid user ID format"
+      }
+    },
+    {
+      "name": "error_duplicate_name",
+      "description": "Should fail when organization name already exists",
+      "input": {
+        "name": "Existing Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "status_code": 409,
+        "success": false,
+        "error": "Organization with this name already exists"
+      },
+      "setup": {
+        "existing_organizations": [
+          {
+            "name": "Existing Organization",
+            "description": "An existing organization",
+            "owner_id": "550e8400-e29b-41d4-a716-446655440001"
+          }
+        ]
+      }
+    },
+    {
+      "name": "success_organization_without_description",
+      "description": "Should successfully create an organization without description",
+      "input": {
+        "name": "Test Organization No Desc",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "status_code": 201,
+        "success": true,
+        "data": {
+          "name": "Test Organization No Desc",
+          "description": ""
+        }
+      }
+    },
+    {
+      "name": "error_name_too_long",
+      "description": "Should fail when organization name is too long",
+      "input": {
+        "name": "This is a very long organization name that exceeds the maximum allowed length of 255 characters. This should cause a validation error because it's way too long and would not fit in the database field. We need to ensure that the name field has proper validation to prevent such long names from being stored.",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "status_code": 400,
+        "success": false,
+        "error": "Name is too long"
+      }
+    },
+    {
+      "name": "error_special_characters_in_name",
+      "description": "Should fail when organization name contains invalid special characters",
+      "input": {
+        "name": "Test<Organization>",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "status_code": 400,
+        "success": false,
+        "error": "Name contains invalid characters"
+      }
+    }
+  ]
+} 

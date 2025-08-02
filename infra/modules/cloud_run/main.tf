@@ -3,8 +3,11 @@ resource "google_cloud_run_v2_service" "service" {
   name     = "${var.service_name}-${var.environment}"
   location = var.region
   project  = var.project_id
+  ingress="INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
+  
+    
     scaling {
       min_instance_count = var.min_instances
       max_instance_count = var.max_instances

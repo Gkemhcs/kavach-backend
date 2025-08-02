@@ -1,6 +1,11 @@
 output "load_balancer_ip" {
-  description = "The IP address of the load balancer"
+  description = "The IPv4 address of the load balancer"
   value       = google_compute_global_address.lb_ip.address
+}
+
+output "load_balancer_ipv6" {
+  description = "The IPv6 address of the load balancer"
+  value       = google_compute_global_address.lb_ipv6.address
 }
 
 output "load_balancer_name" {
@@ -28,10 +33,7 @@ output "url_map_id" {
   value       = google_compute_url_map.url_map.id
 }
 
-output "health_check_id" {
-  description = "The ID of the health check"
-  value       = google_compute_health_check.health_check.id
-}
+# Health check output removed - not supported with Serverless NEGs for Cloud Run
 
 output "network_endpoint_group_id" {
   description = "The ID of the network endpoint group"

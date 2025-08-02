@@ -16,7 +16,7 @@ resource "google_compute_security_policy" "policy" {
     description = "Default rule, higher priority overrides it"
   }
 
-  # Aggressive rate limiting rule for simulation
+  # General rate limiting rule
   rule {
     action   = "rate_based_ban"
     priority = "1000"
@@ -28,18 +28,18 @@ resource "google_compute_security_policy" "policy" {
     }
     rate_limit_options {
       rate_limit_threshold {
-        count        = 10
+        count        = 20
         interval_sec = 60
       }
       conform_action   = "allow"
       exceed_action    = "deny(429)"
       enforce_on_key   = "IP"
-      ban_duration_sec = 600
+      ban_duration_sec = 60
     }
-    description = "Simulation: Aggressive rate limiting - 10 requests per minute per IP"
+    description = "Rate limiting: 20 requests per minute per IP, 1 minute ban"
   }
 
-  # Burst rate limiting for API endpoints
+  # API burst limiting for API endpoints
   rule {
     action   = "rate_based_ban"
     priority = "1100"
@@ -50,15 +50,15 @@ resource "google_compute_security_policy" "policy" {
     }
     rate_limit_options {
       rate_limit_threshold {
-        count        = 5
+        count        = 10
         interval_sec = 30
       }
       conform_action   = "allow"
       exceed_action    = "deny(429)"
       enforce_on_key   = "IP"
-      ban_duration_sec = 300
+      ban_duration_sec = 60
     }
-    description = "Simulation: API burst limiting - 5 requests per 30 seconds per IP"
+    description = "API burst limiting: 10 requests per 30 seconds per IP, 1 minute ban"
   }
 
   # Login endpoint rate limiting
@@ -72,15 +72,15 @@ resource "google_compute_security_policy" "policy" {
     }
     rate_limit_options {
       rate_limit_threshold {
-        count        = 3
+        count        = 5
         interval_sec = 60
       }
       conform_action   = "allow"
       exceed_action    = "deny(429)"
       enforce_on_key   = "IP"
-      ban_duration_sec = 900
+      ban_duration_sec = 60
     }
-    description = "Simulation: Login endpoint limiting - 3 attempts per minute per IP"
+    description = "Login endpoint limiting: 5 attempts per minute per IP, 1 minute ban"
   }
 
   # Block known malicious IPs (only if IPs are provided)
@@ -236,7 +236,7 @@ resource "google_compute_backend_service" "backend_with_armor" {
     group = var.backend_service_group
   }
 
-  health_checks = [var.health_check_id]
+  # Health checks removed - not supported with Serverless NEGs for Cloud Run
 
   security_policy = google_compute_security_policy.policy.name
 
