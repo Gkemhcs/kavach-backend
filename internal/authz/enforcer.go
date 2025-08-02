@@ -2,6 +2,7 @@ package authz
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/casbin/casbin/v2"
@@ -17,15 +18,23 @@ type Enforcer struct {
 
 // NewEnforcer creates a new Enforcer instance
 func NewEnforcer(logger *logrus.Logger, cfg AdapterConfig) (*Enforcer, error) {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME)
+	// URL-encode the password to handle special characters
+	encodedPassword := url.QueryEscape(cfg.DB_PASSWORD)
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DB_USER, encodedPassword, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME)
+
+	logger.Infof("🔧 [CASBIN] Initializing Casbin enforcer with DSN: postgres://%s:***@%s:%s/%s", cfg.DB_USER, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME)
+
+	// Let Casbin handle table creation automatically
 	adapter := sqladapter.NewAdapter("postgres", dsn)
 
 	enforcer, err := casbin.NewEnforcer(cfg.MODEL_FILE_PATH, adapter)
-	enforcer.EnableAutoSave(true)
 	if err != nil {
-		return nil, err
+		logger.Errorf("❌ [CASBIN] Failed to create enforcer: %v", err)
+		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
-	logger.Info("Successfully initialized the Authz Enforcer Service")
+
+	enforcer.EnableAutoSave(true)
+	logger.Info("✅ [CASBIN] Successfully initialized the Authz Enforcer Service")
 
 	// Load default policies
 	LoadDefaultPolicies(logger, enforcer)
@@ -365,19 +374,19 @@ func (e *Enforcer) CheckPermission(userID, action, resource string) (bool, error
 
 	// Check for inherited permissions from parent resources
 	e.logger.Infof("🔍 [CAS] Checking for inherited permissions from parent resources...")
-	
+
 	// Try to find parent resources and check permissions there
 	parentResources := e.getParentResources(resource)
 	for _, parentResource := range parentResources {
 		e.logger.Infof("🔍 [CAS] Checking parent resource: %s", parentResource)
-		
+
 		// Check if user has permission on parent resource
 		parentOk, parentErr := e.enforcer.Enforce(userSubject, action, parentResource)
 		if parentErr != nil {
 			e.logger.Errorf("❌ [CAS] Failed to check parent permission [%s, %s, %s]: %v", userSubject, action, parentResource, parentErr)
 			continue
 		}
-		
+
 		if parentOk {
 			e.logger.Infof("✅ [CAS] Inherited permission GRANTED - %s can %s on parent %s", userSubject, action, parentResource)
 			return true, nil
@@ -387,23 +396,23 @@ func (e *Enforcer) CheckPermission(userID, action, resource string) (bool, error
 	}
 
 	e.logger.Infof("❌ [CAS] No direct or inherited permissions found")
-	
+
 	// Add comprehensive debugging when permission is denied
 	e.logger.Infof("🔍 [CAS] === COMPREHENSIVE DEBUGGING ===")
 	e.DebugUserPermissions(userID)
 	e.DebugResourcePermissions(resource)
 	e.logger.Infof("🔍 [CAS] === END COMPREHENSIVE DEBUGGING ===")
-	
+
 	return false, nil
 }
 
 // getParentResources returns all possible parent resources for a given resource
 func (e *Enforcer) getParentResources(resource string) []string {
 	var parents []string
-	
+
 	// Split the resource path
 	parts := strings.Split(resource, "/")
-	
+
 	// Build parent resources by removing the last part
 	for i := len(parts) - 1; i >= 2; i-- { // Start from 2 to keep at least /organizations/{orgID}
 		parent := strings.Join(parts[:i], "/")
@@ -411,7 +420,7 @@ func (e *Enforcer) getParentResources(resource string) []string {
 			parents = append(parents, parent)
 		}
 	}
-	
+
 	return parents
 }
 

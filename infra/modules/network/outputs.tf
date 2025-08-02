@@ -41,4 +41,19 @@ output "cloud_run_subnet_name" {
 output "cloud_run_subnet_self_link" {
   description = "The self-link of the Cloud Run subnet"
   value       = google_compute_subnetwork.cloud_run_subnet.self_link
-} 
+}
+
+output "direct_vpc_network" {
+  description = "The VPC network for direct VPC access"
+  value       = "projects/${var.project_id}/global/networks/${google_compute_network.vpc.name}"
+}
+
+output "direct_vpc_subnetwork" {
+  description = "The VPC subnetwork for direct VPC access"
+  value       = "projects/${var.project_id}/regions/${var.region}/subnetworks/${google_compute_subnetwork.cloud_run_subnet.name}"
+}
+
+output "direct_vpc_network_tags" {
+  description = "Network tags for direct VPC access"
+  value       = ["cloud-run-direct-vpc"]
+}

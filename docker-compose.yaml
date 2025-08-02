@@ -1,0 +1,96 @@
+name: kavach-backend
+services:
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: kavach_user
+      POSTGRES_PASSWORD: gkem1234
+      POSTGRES_DB: kavach_db
+      POSTGRES_INITDB_ARGS: "--auth=md5"
+    networks:
+      - kavach_net
+    volumes:
+      - kavach_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kavach_user -d kavach_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Database Migrations
+  migrate:
+    image: migrate/migrate:latest
+    volumes:
+      - ./internal/db/migrations:/migrations
+    command:
+      ["-path", "/migrations", "-database", "postgres://kavach_user:gkem1234@db:5432/kavach_db?sslmode=disable", "up"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - kavach_net
+    restart: "no"  # Don't restart migrations after completion
+
+  # Kavach Backend Application
+  app:
+    build: .
+    environment:
+      # Database Configuration
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=kavach_user
+      - DB_PASSWORD=gkem1234
+      - DB_NAME=kavach_db
+      
+      # Server Configuration
+      - PORT=8080
+      - ENV=development
+      
+      # JWT Configuration
+      - JWT_SECRET="ii2ir2hi2irhirhihi"
+      - JWT_ACCESS_TOKEN_SECRET="ii2ir2hi2irhirhihi"
+      - JWT_REFRESH_TOKEN_SECRET="3jr3orj3ororooojo"
+      - ACCESS_TOKEN_DURATION=1000
+      - REFRESH_TOKEN_DURATION=1440
+      
+      # GitHub OAuth Configuration
+      - GITHUB_CLIENT_SECRET=5443d36bce262d918734f3660b25e8f5a8edd6a4
+      - GITHUB_CLIENT_ID=Ov23liGBmUydi78tbKkG
+      - GITHUB_CALLBACK_URL=http://localhost:8080/api/v1/auth/github/callback
+      
+                              
+
+      # Encryption Keys
+      - ENCRYPTION_KEY=RhK7KoKSwOuFOHxONMNaO9Z9pDgJKwZjaNhcbgZ7Qqc=
+      
+      # Model File Path
+      - MODEL_FILE_PATH=/internal/authz/model.conf
+      
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - kavach_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  kavach_net:
+    driver: bridge
+
+volumes:
+  kavach_postgres_data:
+    driver: local 

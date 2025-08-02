@@ -24,23 +24,17 @@ resource "google_project_iam_member" "cloud_sql_client" {
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
-# IAM binding for Cloud Run service account to access Artifact Registry
-resource "google_project_iam_member" "artifact_registry_reader" {
-  project = var.project_id
-  role    = "roles/artifactregistry.reader"
-  member  = "serviceAccount:${google_service_account.cloud_run.email}"
-}
-
 # IAM binding for Cloud Run service account to access Cloud Run
 resource "google_project_iam_member" "cloud_run_invoker" {
   project = var.project_id
-  role    = "roles/run.invoker"
+  role    = "roles/monitoring.metricWriter"
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
-# IAM binding for Cloud Run service account to access VPC
-resource "google_project_iam_member" "vpc_access_user" {
+
+# IAM binding for Cloud Run service account to access Artifact Registry
+resource "google_project_iam_member" "artifact_registry_reader" {
   project = var.project_id
-  role    = "roles/vpcaccess.user"
+  role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
-} 
+}

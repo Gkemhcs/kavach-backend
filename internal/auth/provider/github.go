@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -157,10 +158,27 @@ func (g *GitHubProvider) StartDeviceFlow(ctx context.Context) (*DeviceCodeRespon
 	}
 	defer resp.Body.Close()
 
-	var res DeviceCodeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	// Read the response body for debugging
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return nil, err
 	}
+
+	// Check if response is successful
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub device flow failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var res DeviceCodeResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		return nil, fmt.Errorf("failed to parse GitHub response: %v, body: %s", err, string(body))
+	}
+
+	// Validate that we got the required fields
+	if res.DeviceCode == "" || res.UserCode == "" {
+		return nil, fmt.Errorf("GitHub returned empty device code or user code: %+v", res)
+	}
+
 	return &res, nil
 }
 

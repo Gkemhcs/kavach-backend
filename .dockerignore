@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Terraform
+infra/
+*.tf
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Logs
+*.log
+*.tmp
+*.bak
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+*_test.go
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation
+README.md
+LICENSE
+docs/
+
+# Build artifacts (we'll generate these in the container)
+bin/
+dist/
+build/
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Keep the gen/ folders excluded as they'll be generated in the container
+# But allow the SQL files and migrations to be copied
+**/gen/
+
+# Exclude any local development files
+*.local
+local/
+dev/

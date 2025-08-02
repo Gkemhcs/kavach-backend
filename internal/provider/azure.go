@@ -318,8 +318,3 @@ func (a *AzureProvider) disableOlderVersions(ctx context.Context, secretName str
 	logEntry.Info("Current version will be automatically disabled when new version is created")
 	return nil
 }
-
-// toPtr returns a pointer to the given boolean value
-func toPtr(b bool) *bool {
-	return &b
-}

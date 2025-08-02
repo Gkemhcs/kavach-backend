@@ -51,20 +51,20 @@ db_authorized_networks = []
 # =============================================================================
 
 # Service settings
-# cloud_run_service_name = "kavach-backend"
+cloud_run_service_name = "kavach-backend"
 
 # REQUIRED: Set your container image URL
-cloud_run_image_url = "asia-south1-docker.pkg.dev/taskpilot-backend-project/kavach-artifact-repo/kavach-backend:latest"
+cloud_run_image_url = "asia-south1-docker.pkg.dev/taskpilot-backend-project/kavach-artifact-repo-dev/kavach-backend:v3"
 
 # Resource allocation (optimized for cost)
-# cloud_run_cpu    = "1000m"    # 1 CPU
-# cloud_run_memory = "512Mi"    # 512 MB RAM
+cloud_run_cpu    = "1000m"    # 1 CPU
+cloud_run_memory = "512Mi"    # 512 MB RAM
 
 # Scaling configuration
-# cloud_run_max_instances = 5   # Reduced from 10 for cost optimization
-# cloud_run_min_instances = 0   # Scale to zero when not in use
-# cloud_run_concurrency   = 80  # Concurrent requests per instance
-# cloud_run_timeout_seconds = 300
+cloud_run_max_instances = 5   # Reduced from 10 for cost optimization
+cloud_run_min_instances = 0   # Scale to zero when not in use
+cloud_run_concurrency   = 80  # Concurrent requests per instance
+cloud_run_timeout_seconds = 300
 
 # Environment variables for Cloud Run
 # cloud_run_env_vars = {
@@ -81,34 +81,25 @@ cloud_run_image_url = "asia-south1-docker.pkg.dev/taskpilot-backend-project/kava
 # =============================================================================
 
 # Load balancer settings
-# load_balancer_name = "kavach-lb"
-# ssl_certificate_name = "kavach-ssl-cert"
+load_balancer_name = "kavach-lb"
+ssl_certificate_name = "kavach-ssl-cert"
 
 # Domain configuration (set your domain for production)
-# domain_name = ""  # e.g., "api.yourdomain.com"
-# enable_ssl  = false  # Set to true when you have a domain
+domain_name = "kavach.gkem.cloud."  # REQUIRED: Your domain name
+dns_zone_name = "gkem-cloud-domain"      # REQUIRED: Name of your existing DNS zone
+enable_ssl  = true                 # Enable SSL certificate
 
 # =============================================================================
 # CLOUD ARMOR SECURITY (commented out for now)
 # =============================================================================
 
 # Security policy
-# cloud_armor_policy_name = "kavach-armor-policy"
+cloud_armor_policy_name = "kavach-armor-policy"
 
 # Basic security rules (customize based on your needs)
-# cloud_armor_rules = [
-#   {
-#     action      = "deny(403)"
-#     priority    = 1000
-#     description = "Deny access from suspicious IP ranges"
-#     match = {
-#       versioned_expr = "SRC_IPS_V1"
-#       config = {
-#         src_ip_ranges = ["0.0.0.0/0"]
-#       }
-#     }
-#   }
-# ]
+# Note: Rate limiting rules are now configured in the Cloud Armor module
+# with simulation settings for testing
+cloud_armor_rules = []
 
 # =============================================================================
 # ARTIFACT REGISTRY CONFIGURATION
@@ -128,7 +119,6 @@ artifact_description    = "Kavach application container images"
 # are automatically handled by the PostgreSQL module and Secret Manager
 app_env_vars = {
   APP_ENV     = "development"
-  PORT        = "8080"
   LOG_LEVEL   = "debug"
   API_VERSION = "v1"
 }
@@ -143,7 +133,7 @@ app_secrets = {
   JWT_REFRESH_TOKEN_SECRET = "3jr3orj3ororooojo"
   GITHUB_CLIENT_SECRET     = "1923b5b5819ea865611d022fe939b2161547b79b"
   GITHUB_CLIENT_ID         = "Ov23liTQd2sTs4yFbcaH"
-  GITHUB_CALLBACK_URL      = "http://kavach.gkem.cloud/auth/github/callback"
+  GITHUB_CALLBACK_URL      = "http://kavach.gkem.cloud/api/v1/auth/github/callback"
 }
 
 # =============================================================================

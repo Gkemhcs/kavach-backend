@@ -36,7 +36,7 @@ resource "google_compute_subnetwork" "subnet" {
 # Cloud Run Subnet for VPC Direct Egress Access
 resource "google_compute_subnetwork" "cloud_run_subnet" {
   name          = "cloud-run-subnet-${var.environment}"
-  ip_cidr_range = "10.8.0.0/28" # Smaller range (16 IPs) for Cloud Run VPC access
+  ip_cidr_range = "10.8.0.0/24" # Larger range (256 IPs) for Cloud Run VPC access
   region        = var.region
   network       = google_compute_network.vpc.id
   project       = var.project_id
@@ -76,7 +76,7 @@ resource "google_compute_firewall" "internal" {
     protocol = "icmp"
   }
 
-  source_ranges = [var.subnet_cidr, "10.8.0.0/28"] # Include both main subnet and Cloud Run subnet
+  source_ranges = [var.subnet_cidr, "10.8.0.0/24"] # Include both main subnet and Cloud Run subnet
   target_tags   = ["internal"]
 }
 
@@ -91,7 +91,7 @@ resource "google_compute_firewall" "cloud_run_vpc" {
     ports    = ["5432"] # PostgreSQL
   }
 
-  source_ranges = ["10.8.0.0/28"] # Cloud Run subnet range
+  source_ranges = ["10.8.0.0/24"] # Cloud Run subnet range
   target_tags   = ["cloud-sql"]
 }
 
@@ -114,4 +114,51 @@ resource "google_compute_firewall" "lb_health_checks" {
 
   # Allow health checks to reach Cloud Run services
   target_tags = ["cloud-run"]
-} 
+}
+
+# Firewall rule to allow Cloud Run direct VPC access to Cloud SQL
+resource "google_compute_firewall" "cloud_run_direct_vpc_cloud_sql" {
+  name    = "allow-cloud-run-direct-vpc-cloud-sql-${var.environment}"
+  network = google_compute_network.vpc.name
+  project = var.project_id
+
+  allow {
+    protocol = "tcp"
+    ports    = ["5432"] # PostgreSQL
+  }
+
+  source_ranges = [var.subnet_cidr, "10.8.0.0/24"] # Main subnet and Cloud Run subnet
+  target_tags   = ["cloud-sql"]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Firewall rule to allow Cloud Run direct VPC egress
+resource "google_compute_firewall" "cloud_run_direct_vpc_egress" {
+  name    = "allow-cloud-run-direct-vpc-egress-${var.environment}"
+  network = google_compute_network.vpc.name
+  project = var.project_id
+
+  allow {
+    protocol = "tcp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "udp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = [var.subnet_cidr, "10.8.0.0/24"] # Main subnet and Cloud Run subnet
+  target_tags   = ["cloud-run-direct-vpc"]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

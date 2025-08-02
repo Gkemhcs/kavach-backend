@@ -34,4 +34,10 @@ output "user_name" {
 output "password_secret_id" {
   description = "The Secret Manager secret ID for the database password"
   value       = google_secret_manager_secret.db_password.secret_id
+}
+
+output "password" {
+  description = "The database password (sensitive)"
+  value       = random_password.db_password.result
+  sensitive   = true
 } 

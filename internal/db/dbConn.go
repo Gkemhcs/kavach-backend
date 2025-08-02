@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 
 	"github.com/Gkemhcs/kavach-backend/internal/config"
 	_ "github.com/lib/pq"
@@ -14,8 +15,10 @@ import (
 // Returns a *sql.DB instance for database operations. Ensures the connection is valid before returning.
 func InitDB(logger *logrus.Logger, config *config.Config) *sql.DB {
 	// Build the PostgreSQL connection URL from config values
+	// URL-encode the password to handle special characters
+	encodedPassword := url.QueryEscape(config.DBPassword)
 	dbURL := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-		config.DBUser, config.DBPassword, config.DBHost, config.DBPort, config.DBName)
+		config.DBUser, encodedPassword, config.DBHost, config.DBPort, config.DBName)
 
 	// Open a new database connection
 	conn, err := sql.Open("postgres", dbURL)

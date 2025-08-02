@@ -194,6 +194,12 @@ variable "domain_name" {
   default     = ""
 }
 
+variable "dns_zone_name" {
+  description = "Name of the existing DNS zone"
+  type        = string
+  default     = "kavach-zone"
+}
+
 variable "enable_ssl" {
   description = "Enable SSL for the load balancer"
   type        = bool

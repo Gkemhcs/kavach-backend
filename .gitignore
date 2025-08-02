@@ -7,9 +7,24 @@
 *.dll
 *.so
 *.dylib
-
+infra/.terraform/
 # Test binary, built with `go test -c`
 *.test
+
+
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+
+
 
 # Code coverage profiles and other test artifacts
 *.out
