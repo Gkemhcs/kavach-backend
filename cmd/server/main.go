@@ -69,7 +69,7 @@ func main() {
 		DB_NAME:         cfg.DBName,
 		MODEL_FILE_PATH: cfg.ModelFilePath,
 	}
-	authzEnforcer, err := authz.NewEnforcer(logger, enforcerConfig)
+	authzEnforcer, err := authz.NewCasbinEnforcer(logger, enforcerConfig)
 	if err != nil {
 		panic(err)
 	}

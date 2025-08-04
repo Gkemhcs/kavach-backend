@@ -1,0 +1,223 @@
+{
+  "test_cases": [
+    {
+      "name": "list_accessible_organizations_success",
+      "description": "Successfully list organizations accessible to a user",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "organizations": [
+          {
+            "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+            "organization_name": "Test Org",
+            "role": "admin"
+          },
+          {
+            "organization_id": "550e8400-e29b-41d4-a716-446655440005",
+            "organization_name": "Another Org",
+            "role": "viewer"
+          }
+        ],
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "ListAccessibleOrganizations",
+          "return": {
+            "organizations": [
+              {
+                "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+                "organization_name": "Test Org",
+                "role": "admin"
+              },
+              {
+                "organization_id": "550e8400-e29b-41d4-a716-446655440005",
+                "organization_name": "Another Org",
+                "role": "viewer"
+              }
+            ],
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "list_accessible_organizations_empty",
+      "description": "Return empty list when user has no organization access",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "organizations": [],
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "ListAccessibleOrganizations",
+          "return": {
+            "organizations": [],
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "list_accessible_organizations_database_error",
+      "description": "Fail to list organizations due to database error",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "organizations": null,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "ListAccessibleOrganizations",
+          "return": {
+            "organizations": null,
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_accessible_secret_groups_success",
+      "description": "Successfully list secret groups accessible to a user within an organization",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "secret_groups": [
+          {
+            "secret_group_id": "550e8400-e29b-41d4-a716-446655440003",
+            "secret_group_name": "Dev Secrets",
+            "role": "editor"
+          },
+          {
+            "secret_group_id": "550e8400-e29b-41d4-a716-446655440006",
+            "secret_group_name": "Prod Secrets",
+            "role": "viewer"
+          }
+        ],
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "ListAccessibleSecretGroups",
+          "return": {
+            "secret_groups": [
+              {
+                "secret_group_id": "550e8400-e29b-41d4-a716-446655440003",
+                "secret_group_name": "Dev Secrets",
+                "role": "editor"
+              },
+              {
+                "secret_group_id": "550e8400-e29b-41d4-a716-446655440006",
+                "secret_group_name": "Prod Secrets",
+                "role": "viewer"
+              }
+            ],
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "list_accessible_secret_groups_empty",
+      "description": "Return empty list when user has no secret group access",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "secret_groups": [],
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "ListAccessibleSecretGroups",
+          "return": {
+            "secret_groups": [],
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "list_accessible_environments_success",
+      "description": "Successfully list environments accessible to a user within a secret group",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": true,
+        "environments": [
+          {
+            "environment_id": "550e8400-e29b-41d4-a716-446655440007",
+            "environment_name": "Development",
+            "role": "editor"
+          },
+          {
+            "environment_id": "550e8400-e29b-41d4-a716-446655440008",
+            "environment_name": "Staging",
+            "role": "viewer"
+          }
+        ],
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "ListAccessibleEnvironments",
+          "return": {
+            "environments": [
+              {
+                "environment_id": "550e8400-e29b-41d4-a716-446655440007",
+                "environment_name": "Development",
+                "role": "editor"
+              },
+              {
+                "environment_id": "550e8400-e29b-41d4-a716-446655440008",
+                "environment_name": "Staging",
+                "role": "viewer"
+              }
+            ],
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "list_accessible_environments_empty",
+      "description": "Return empty list when user has no environment access",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": true,
+        "environments": [],
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "ListAccessibleEnvironments",
+          "return": {
+            "environments": [],
+            "error": null
+          }
+        }
+      }
+    }
+  ]
+} 

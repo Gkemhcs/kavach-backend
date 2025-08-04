@@ -1,0 +1,120 @@
+{
+  "test_cases": [
+    {
+      "name": "success_list_group_members",
+      "description": "Should successfully list group members",
+      "input": {
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "members": [
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440004",
+            "name": "John Doe",
+            "email": "john.doe@example.com"
+          },
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440005",
+            "name": "Jane Smith",
+            "email": "jane.smith@example.com"
+          }
+        ]
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "ListGroupMembers",
+          "return": {
+            "members": [
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440004",
+                "name": "John Doe",
+                "email": "john.doe@example.com"
+              },
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440005",
+                "name": "Jane Smith",
+                "email": "jane.smith@example.com"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "success_list_group_members_empty",
+      "description": "Should successfully return empty list when group has no members",
+      "input": {
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "members": []
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "ListGroupMembers",
+          "return": {
+            "members": []
+          }
+        }
+      }
+    },
+    {
+      "name": "success_list_group_members_partial_data",
+      "description": "Should successfully list group members with partial data",
+      "input": {
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "members": [
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440004",
+            "name": "John Doe"
+          },
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440005",
+            "email": "jane.smith@example.com"
+          }
+        ]
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "ListGroupMembers",
+          "return": {
+            "members": [
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440004",
+                "name": "John Doe"
+              },
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440005",
+                "email": "jane.smith@example.com"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "ListGroupMembers",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

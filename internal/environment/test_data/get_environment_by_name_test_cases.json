@@ -1,0 +1,102 @@
+{
+  "test_cases": [
+    {
+      "name": "success_get_environment_by_name",
+      "description": "Should successfully get an environment by name",
+      "input": {
+        "environment_name": "prod",
+        "group_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "environment": {
+          "id": "550e8400-e29b-41d4-a716-446655440002",
+          "name": "prod",
+          "description": "Production environment",
+          "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+        }
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "GetEnvironmentByName",
+          "return": {
+            "environment": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "name": "prod",
+              "description": "Production environment",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "success_get_environment_by_name_without_description",
+      "description": "Should successfully get an environment by name without description",
+      "input": {
+        "environment_name": "dev",
+        "group_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "environment": {
+          "id": "550e8400-e29b-41d4-a716-446655440002",
+          "name": "dev",
+          "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+        }
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "GetEnvironmentByName",
+          "return": {
+            "environment": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "name": "dev",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "error_environment_not_found",
+      "description": "Should fail when environment is not found",
+      "input": {
+        "environment_name": "Non Existent Environment",
+        "group_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "environment_not_exist"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "GetEnvironmentByName",
+          "return": {
+            "error": "sql: no rows in result set"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "environment_name": "prod",
+        "group_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "GetEnvironmentByName",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

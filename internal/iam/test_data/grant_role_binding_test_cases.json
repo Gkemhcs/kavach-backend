@@ -1,0 +1,221 @@
+{
+  "test_cases": [
+    {
+      "name": "successful_user_role_grant",
+      "description": "Successfully grant admin role to a user on an organization",
+      "input": {
+        "user_name": "testuser",
+        "group_name": "",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": true,
+        "error": null
+      },
+      "mock_setup": {
+        "user_resolver": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "github_username": "testuser",
+              "email": "test@example.com"
+            },
+            "error": null
+          }
+        },
+        "iam_repo": {
+          "method": "GrantRoleBinding",
+          "return": {
+            "error": null
+          }
+        },
+        "policy_enforcer": {
+          "method": "GrantRole",
+          "return": {
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "successful_group_role_grant",
+      "description": "Successfully grant editor role to a group on a secret group",
+      "input": {
+        "user_name": "",
+        "group_name": "developers",
+        "role": "editor",
+        "resource_type": "secret_group",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440003",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": {
+          "uuid": "550e8400-e29b-41d4-a716-446655440003",
+          "valid": true
+        },
+        "environment_id": null
+      },
+      "expected": {
+        "success": true,
+        "error": null
+      },
+      "mock_setup": {
+        "user_group_resolver": {
+          "method": "GetUserGroupByName",
+          "return": {
+            "group": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "name": "developers",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+            },
+            "error": null
+          }
+        },
+        "iam_repo": {
+          "method": "GrantRoleBinding",
+          "return": {
+            "error": null
+          }
+        },
+        "policy_enforcer": {
+          "method": "GrantRole",
+          "return": {
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "user_not_found_error",
+      "description": "Fail to grant role when user doesn't exist",
+      "input": {
+        "user_name": "nonexistentuser",
+        "group_name": "",
+        "role": "viewer",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "error": "user not found"
+      },
+      "mock_setup": {
+        "user_resolver": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": null,
+            "error": "user not found"
+          }
+        }
+      }
+    },
+    {
+      "name": "group_not_found_error",
+      "description": "Fail to grant role when group doesn't exist",
+      "input": {
+        "user_name": "",
+        "group_name": "nonexistentgroup",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "error": "group not found"
+      },
+      "mock_setup": {
+        "user_group_resolver": {
+          "method": "GetUserGroupByName",
+          "return": {
+            "group": null,
+            "error": "group not found"
+          }
+        }
+      }
+    },
+    {
+      "name": "duplicate_role_binding_error",
+      "description": "Fail to grant role when role binding already exists",
+      "input": {
+        "user_name": "testuser",
+        "group_name": "",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "error": "duplicate role binding"
+      },
+      "mock_setup": {
+        "user_resolver": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "github_username": "testuser",
+              "email": "test@example.com"
+            },
+            "error": null
+          }
+        },
+        "iam_repo": {
+          "method": "GrantRoleBinding",
+          "return": {
+            "error": "duplicate role binding"
+          }
+        }
+      }
+    },
+    {
+      "name": "database_error",
+      "description": "Fail to grant role due to database error",
+      "input": {
+        "user_name": "testuser",
+        "group_name": "",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "user_resolver": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "github_username": "testuser",
+              "email": "test@example.com"
+            },
+            "error": null
+          }
+        },
+        "iam_repo": {
+          "method": "GrantRoleBinding",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

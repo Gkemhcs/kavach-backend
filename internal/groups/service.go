@@ -15,7 +15,7 @@ import (
 
 // NewUserGroupService creates a new UserGroupService instance with the provided dependencies.
 // This service handles business logic for user group operations including CRUD operations and member management.
-func NewUserGroupService(logger *logrus.Logger, usergroupRepo groupsdb.Querier, userService auth.UserInfoGetter, policyEnforcer *authz.Enforcer) *UserGroupService {
+func NewUserGroupService(logger *logrus.Logger, usergroupRepo groupsdb.Querier, userService auth.UserInfoGetter, policyEnforcer authz.Enforcer) *UserGroupService {
 	return &UserGroupService{
 		logger:         logger,
 		userGroupRepo:  usergroupRepo,
@@ -30,7 +30,7 @@ type UserGroupService struct {
 	logger         *logrus.Logger
 	userGroupRepo  groupsdb.Querier
 	userService    auth.UserInfoGetter
-	policyEnforcer *authz.Enforcer
+	policyEnforcer authz.Enforcer
 }
 
 // CreateUserGroup creates a new user group within an organization.

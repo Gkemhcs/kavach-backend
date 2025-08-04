@@ -1,0 +1,125 @@
+{
+  "test_cases": [
+    {
+      "name": "success_get_provider_syncer",
+      "description": "Successfully get a provider syncer",
+      "input": {
+        "environment_id": "550e8400-e29b-41d4-a716-446655440001",
+        "provider": "github"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "provider_decryption_failed"
+      },
+      "mock_setup": {
+        "provider_repo": [
+          {
+            "method": "GetProviderCredential",
+            "return": {
+              "provider_credential": {
+                "id": "550e8400-e29b-41d4-a716-446655440003",
+                "environment_id": "550e8400-e29b-41d4-a716-446655440001",
+                "provider": "github",
+                "credentials": "encrypted_credentials_data"
+              }
+            }
+          }
+        ],
+        "factory": {
+          "method": "CreateProvider",
+          "return": {}
+        }
+      }
+    },
+    {
+      "name": "error_invalid_environment_id",
+      "description": "Fail to get provider syncer with invalid environment ID",
+      "input": {
+        "environment_id": "invalid-uuid",
+        "provider": "github"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_provider_credential_not_found",
+      "description": "Fail to get provider syncer when credential doesn't exist",
+      "input": {
+        "environment_id": "550e8400-e29b-41d4-a716-446655440001",
+        "provider": "github"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "provider_credential_not_found"
+      },
+      "mock_setup": {
+        "provider_repo": [
+          {
+            "method": "GetProviderCredential",
+            "return": {
+              "error": "sql: no rows in result set"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_provider_credential_get_failed",
+      "description": "Fail to get provider syncer due to credential retrieval error",
+      "input": {
+        "environment_id": "550e8400-e29b-41d4-a716-446655440001",
+        "provider": "github"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "provider_credential_get_failed"
+      },
+      "mock_setup": {
+        "provider_repo": [
+          {
+            "method": "GetProviderCredential",
+            "return": {
+              "error": "database connection failed"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_provider_sync_failed",
+      "description": "Fail to get provider syncer due to factory error",
+      "input": {
+        "environment_id": "550e8400-e29b-41d4-a716-446655440001",
+        "provider": "github"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "provider_decryption_failed"
+      },
+      "mock_setup": {
+        "provider_repo": [
+          {
+            "method": "GetProviderCredential",
+            "return": {
+              "provider_credential": {
+                "id": "550e8400-e29b-41d4-a716-446655440003",
+                "environment_id": "550e8400-e29b-41d4-a716-446655440001",
+                "provider": "github",
+                "credentials": "encrypted_credentials_data"
+              }
+            }
+          }
+        ],
+        "factory": {
+          "method": "CreateProvider",
+          "return": {
+            "error": "failed to create provider"
+          }
+        }
+      }
+    }
+  ]
+} 

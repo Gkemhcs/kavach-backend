@@ -14,12 +14,12 @@ import (
 
 // PermissionHandler handles authorization for permission operations
 type PermissionHandler struct {
-	enforcer *authz.Enforcer
+	enforcer authz.Enforcer
 	logger   *logrus.Logger
 }
 
 // NewPermissionHandler creates a new permission handler
-func NewPermissionHandler(enforcer *authz.Enforcer, logger *logrus.Logger) *PermissionHandler {
+func NewPermissionHandler(enforcer authz.Enforcer, logger *logrus.Logger) *PermissionHandler {
 	return &PermissionHandler{
 		enforcer: enforcer,
 		logger:   logger,

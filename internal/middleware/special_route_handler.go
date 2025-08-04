@@ -11,13 +11,13 @@ import (
 
 // SpecialRouteHandler handles authorization for special routes
 type SpecialRouteHandler struct {
-	enforcer          *authz.Enforcer
+	enforcer          authz.Enforcer
 	logger            *logrus.Logger
 	permissionHandler *PermissionHandler
 }
 
 // NewSpecialRouteHandler creates a new special route handler
-func NewSpecialRouteHandler(enforcer *authz.Enforcer, logger *logrus.Logger) *SpecialRouteHandler {
+func NewSpecialRouteHandler(enforcer authz.Enforcer, logger *logrus.Logger) *SpecialRouteHandler {
 	return &SpecialRouteHandler{
 		enforcer:          enforcer,
 		logger:            logger,

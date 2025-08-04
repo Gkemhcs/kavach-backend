@@ -12,7 +12,7 @@ import (
 
 // AuthMiddleware handles authorization for all API endpoints
 type AuthMiddleware struct {
-	enforcer *authz.Enforcer
+	enforcer authz.Enforcer
 	logger   *logrus.Logger
 	// Specialized handlers
 	domainHandler     *DomainRouteHandler
@@ -21,7 +21,7 @@ type AuthMiddleware struct {
 }
 
 // NewAuthMiddleware creates a new authorization middleware
-func NewAuthMiddleware(enforcer *authz.Enforcer, logger *logrus.Logger) *AuthMiddleware {
+func NewAuthMiddleware(enforcer authz.Enforcer, logger *logrus.Logger) *AuthMiddleware {
 	return &AuthMiddleware{
 		enforcer:          enforcer,
 		logger:            logger,

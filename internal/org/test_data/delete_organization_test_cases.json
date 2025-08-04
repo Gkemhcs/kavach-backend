@@ -1,0 +1,147 @@
+{
+  "test_cases": [
+    {
+      "name": "success_delete_organization",
+      "description": "Should successfully delete an organization",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "DeleteOrganization",
+          "return": {}
+        },
+        "iam_service": {
+          "method": "DeleteRoleBinding",
+          "return": {}
+        },
+        "policy_enforcer": {
+          "method": "RemoveResource",
+          "return": {}
+        }
+      }
+    },
+    {
+      "name": "error_invalid_org_id",
+      "description": "Should fail when organization ID is not a valid UUID",
+      "input": {
+        "org_id": "invalid-uuid"
+      },
+      "expected": {
+        "success": false,
+        "error": "invalid UUID"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_organization_not_found",
+      "description": "Should fail when organization is not found",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error": "the organisation you are trying to operate not exist"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "DeleteOrganization",
+          "return": {
+            "error": "sql: no rows in result set"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_foreign_key_violation",
+      "description": "Should fail when organization has dependent records",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error": "foreign key constraint violation"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "DeleteOrganization",
+          "return": {
+            "error": "foreign key constraint violation"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "DeleteOrganization",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_iam_service_error",
+      "description": "Should fail when IAM service fails",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error": "iam service error"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "DeleteOrganization",
+          "return": {}
+        },
+        "iam_service": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": "iam service error"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_policy_enforcer_error",
+      "description": "Should fail when policy enforcer fails",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "DeleteOrganization",
+          "return": {}
+        },
+        "iam_service": {
+          "method": "DeleteRoleBinding",
+          "return": {}
+        },
+        "policy_enforcer": {
+          "method": "RemoveResource",
+          "return": {
+            "error": "policy enforcer error"
+          }
+        }
+      }
+    }
+  ]
+} 

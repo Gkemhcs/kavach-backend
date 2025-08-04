@@ -1,0 +1,209 @@
+{
+  "test_cases": [
+    {
+      "name": "success_valid_organization_creation",
+      "description": "Should successfully create an organization with valid data",
+      "input": {
+        "name": "Test Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "organization": {
+          "id": "550e8400-e29b-41d4-a716-446655440001",
+          "name": "Test Organization",
+          "description": "A test organization for unit testing",
+          "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+        }
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "CreateOrganization",
+          "return": {
+            "organization": {
+              "id": "550e8400-e29b-41d4-a716-446655440001",
+              "name": "Test Organization",
+              "description": "A test organization for unit testing",
+              "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "user_id": "550e8400-e29b-41d4-a716-446655440000",
+              "role": "owner",
+              "resource_type": "organization",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440001",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "policy_enforcer": {
+          "method": "GrantRoleWithPermissions",
+          "return": {}
+        }
+      }
+    },
+    {
+      "name": "success_organization_without_description",
+      "description": "Should successfully create an organization without description",
+      "input": {
+        "name": "Test Organization No Desc",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "organization": {
+          "id": "550e8400-e29b-41d4-a716-446655440001",
+          "name": "Test Organization No Desc",
+          "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+        }
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "CreateOrganization",
+          "return": {
+            "organization": {
+              "id": "550e8400-e29b-41d4-a716-446655440001",
+              "name": "Test Organization No Desc",
+              "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "user_id": "550e8400-e29b-41d4-a716-446655440000",
+              "role": "owner",
+              "resource_type": "organization",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440001",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "policy_enforcer": {
+          "method": "GrantRoleWithPermissions",
+          "return": {}
+        }
+      }
+    },
+    {
+      "name": "error_invalid_user_id",
+      "description": "Should fail when user ID is not a valid UUID",
+      "input": {
+        "name": "Test Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "invalid-uuid"
+      },
+      "expected": {
+        "success": false,
+        "error": "internal server error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "name": "Test Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "internal server error"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "CreateOrganization",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_iam_service_error",
+      "description": "Should fail when IAM service fails",
+      "input": {
+        "name": "Test Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "iam service error"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "CreateOrganization",
+          "return": {
+            "organization": {
+              "id": "550e8400-e29b-41d4-a716-446655440001",
+              "name": "Test Organization",
+              "description": "A test organization for unit testing",
+              "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "error": "iam service error"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_policy_enforcer_error",
+      "description": "Should fail when policy enforcer fails",
+      "input": {
+        "name": "Test Organization",
+        "description": "A test organization for unit testing",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "CreateOrganization",
+          "return": {
+            "organization": {
+              "id": "550e8400-e29b-41d4-a716-446655440001",
+              "name": "Test Organization",
+              "description": "A test organization for unit testing",
+              "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "user_id": "550e8400-e29b-41d4-a716-446655440000",
+              "role": "owner",
+              "resource_type": "organization",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440001",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "policy_enforcer": {
+          "method": "GrantRoleWithPermissions",
+          "return": {
+            "error": "policy enforcer error"
+          }
+        }
+      }
+    }
+  ]
+} 

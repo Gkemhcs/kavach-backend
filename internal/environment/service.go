@@ -22,12 +22,12 @@ type EnvironmentService struct {
 	repo           environmentdb.Querier
 	logger         *logrus.Logger
 	iamService     iam.IamService
-	policyEnforcer *authz.Enforcer
+	policyEnforcer authz.Enforcer
 }
 
 // NewEnvironmentService creates a new EnvironmentService.
 // Used to inject dependencies and enable testability.
-func NewEnvironmentService(repo environmentdb.Querier, logger *logrus.Logger, iamService iam.IamService, policyEnforcer *authz.Enforcer) *EnvironmentService {
+func NewEnvironmentService(repo environmentdb.Querier, logger *logrus.Logger, iamService iam.IamService, policyEnforcer authz.Enforcer) *EnvironmentService {
 	return &EnvironmentService{repo, logger, iamService, policyEnforcer}
 }
 
@@ -36,7 +36,19 @@ func NewEnvironmentService(repo environmentdb.Querier, logger *logrus.Logger, ia
 func (s *EnvironmentService) CreateEnvironment(ctx context.Context, req CreateEnvironmentRequest) (*environmentdb.Environment, error) {
 	s.logger.Infof("Creating environment for group_id=%s org_id=%s user_id=%s", req.SecretGroup, req.Organization, req.UserId)
 	s.logger.Info(req.Name)
+
+	// Validate UUIDs
 	groupUUID, err := uuid.Parse(req.SecretGroup)
+	if err != nil {
+		return nil, appErrors.ErrInternalServer
+	}
+
+	userUUID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, appErrors.ErrInternalServer
+	}
+
+	orgUUID, err := uuid.Parse(req.Organization)
 	if err != nil {
 		return nil, appErrors.ErrInternalServer
 	}
@@ -59,13 +71,13 @@ func (s *EnvironmentService) CreateEnvironment(ctx context.Context, req CreateEn
 	}
 
 	createBindingParams := iam.CreateRoleBindingRequest{
-		UserID:         uuid.MustParse(req.UserId),
+		UserID:         userUUID,
 		Role:           "owner",
 		ResourceType:   "environment",
 		ResourceID:     env.ID,
-		OrganizationID: uuid.MustParse(req.Organization),
+		OrganizationID: orgUUID,
 		SecretGroupID: uuid.NullUUID{
-			UUID:  uuid.MustParse(req.SecretGroup),
+			UUID:  groupUUID,
 			Valid: true,
 		},
 		EnvironmentID: uuid.NullUUID{
@@ -98,7 +110,14 @@ func (s *EnvironmentService) CreateEnvironment(ctx context.Context, req CreateEn
 // ListEnvironments lists all environments under a secret group.
 func (s *EnvironmentService) ListEnvironments(ctx context.Context, userID, orgID, groupID string) ([]environmentdb.Environment, error) {
 	s.logger.Infof("Listing environments for group_id=%s org_id=%s user_id=%s", groupID, orgID, userID)
+
+	// Validate UUIDs
 	groupUUID, err := uuid.Parse(groupID)
+	if err != nil {
+		return nil, appErrors.ErrInternalServer
+	}
+
+	_, err = uuid.Parse(orgID)
 	if err != nil {
 		return nil, appErrors.ErrInternalServer
 	}
@@ -173,7 +192,7 @@ func (s *EnvironmentService) UpdateEnvironment(ctx context.Context, userID, orgI
 	env, err := s.repo.UpdateEnvironment(ctx, params)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, appErrors.ErrNotFound
+			return nil, appErrors.ErrEnvironmentNotFound
 		}
 		return nil, appErrors.ErrInternalServer
 	}
@@ -190,7 +209,10 @@ func (s *EnvironmentService) DeleteEnvironment(ctx context.Context, userID, orgI
 	err = s.repo.DeleteEnvironment(ctx, envUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return appErrors.ErrNotFound
+			return appErrors.ErrEnvironmentNotFound
+		}
+		if appErrors.IsViolatingForeignKeyConstraints(err) {
+			return appErrors.ErrForeignKeyViolation
 		}
 		return appErrors.ErrInternalServer
 	}

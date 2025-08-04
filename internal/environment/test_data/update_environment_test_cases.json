@@ -1,0 +1,99 @@
+{
+  "test_cases": [
+    {
+      "name": "success_update_environment",
+      "description": "Should successfully update an environment",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003",
+        "name": "staging"
+      },
+      "expected": {
+        "success": true,
+        "environment": {
+          "id": "550e8400-e29b-41d4-a716-446655440003",
+          "name": "staging",
+          "description": "Production environment",
+          "secret_group_id": "550e8400-e29b-41d4-a716-446655440002"
+        }
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "UpdateEnvironment",
+          "return": {
+            "environment": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "name": "staging",
+              "description": "Production environment",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440002"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "error_invalid_env_id",
+      "description": "Should fail when environment ID is not a valid UUID",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "invalid-uuid",
+        "name": "staging"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_environment_not_found",
+      "description": "Should fail when environment is not found",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003",
+        "name": "staging"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "environment_not_exist"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "UpdateEnvironment",
+          "return": {
+            "error": "sql: no rows in result set"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003",
+        "name": "staging"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "UpdateEnvironment",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

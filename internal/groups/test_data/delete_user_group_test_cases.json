@@ -1,0 +1,127 @@
+{
+  "test_cases": [
+    {
+      "name": "success_delete_user_group",
+      "description": "Should successfully delete a user group",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "DeleteGroup",
+          "return": {}
+        },
+        "policy_enforcer": [
+          {
+            "method": "DeleteUserGroup",
+            "return": {}
+          },
+          {
+            "method": "RemoveResourceHierarchy",
+            "return": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_group_not_found",
+      "description": "Should fail when group does not exist",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "user_group_not_exist"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "DeleteGroup",
+          "return": {
+            "error": "sql: no rows in result set"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "DeleteGroup",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_policy_enforcer_delete_user_group",
+      "description": "Should fail when policy enforcer DeleteUserGroup fails",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "DeleteGroup",
+          "return": {}
+        },
+        "policy_enforcer": [
+          {
+            "method": "DeleteUserGroup",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_policy_enforcer_remove_resource_hierarchy",
+      "description": "Should fail when policy enforcer RemoveResourceHierarchy fails",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "DeleteGroup",
+          "return": {}
+        },
+        "policy_enforcer": [
+          {
+            "method": "DeleteUserGroup",
+            "return": {}
+          },
+          {
+            "method": "RemoveResourceHierarchy",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          }
+        ]
+      }
+    }
+  ]
+} 

@@ -190,11 +190,14 @@ func (g *GitHubProvider) PollDeviceToken(ctx context.Context, deviceCode string)
 	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 
 	start := time.Now()
+	pollInterval := 5 * time.Second // Start with 5 seconds
+
 	for {
 		// Timeout after 2 minutes
 		if time.Since(start) > 2*time.Minute {
 			return nil, fmt.Errorf("device_authorization_timeout")
 		}
+
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://github.com/login/oauth/access_token", strings.NewReader(data.Encode()))
 		if err != nil {
 			return nil, err
@@ -221,7 +224,16 @@ func (g *GitHubProvider) PollDeviceToken(ctx context.Context, deviceCode string)
 
 		if res.Error != "" {
 			if res.Error == "authorization_pending" {
-				time.Sleep(5 * time.Second)
+				time.Sleep(pollInterval)
+				continue
+			}
+			if res.Error == "slow_down" {
+				// GitHub is asking us to slow down, increase polling interval
+				pollInterval = time.Duration(float64(pollInterval) * 1.5)
+				if pollInterval > 30*time.Second {
+					pollInterval = 30 * time.Second // Cap at 30 seconds
+				}
+				time.Sleep(pollInterval)
 				continue
 			}
 			return nil, fmt.Errorf("device flow error: %s", res.ErrorDesc)

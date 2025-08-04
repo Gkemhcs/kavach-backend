@@ -1,0 +1,203 @@
+{
+  "test_cases": [
+    {
+      "name": "success_create_user_group",
+      "description": "Should successfully create a user group",
+      "input": {
+        "group_name": "developers",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "description": "Development team group",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "user_group": {
+          "id": "550e8400-e29b-41d4-a716-446655440002",
+          "name": "developers",
+          "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+          "description": "Development team group"
+        }
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "CreateGroup",
+          "return": {
+            "user_group": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "name": "developers",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+              "description": "Development team group"
+            }
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "AddResourceOwner",
+            "return": {}
+          },
+          {
+            "method": "AddResourceHierarchy",
+            "return": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "success_create_user_group_no_description",
+      "description": "Should successfully create a user group without description",
+      "input": {
+        "group_name": "admins",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "user_group": {
+          "id": "550e8400-e29b-41d4-a716-446655440003",
+          "name": "admins",
+          "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+        }
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "CreateGroup",
+          "return": {
+            "user_group": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "name": "admins",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "AddResourceOwner",
+            "return": {}
+          },
+          {
+            "method": "AddResourceHierarchy",
+            "return": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_duplicate_group_name",
+      "description": "Should fail when group name already exists in organization",
+      "input": {
+        "group_name": "existing-group",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "description": "This group already exists",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "duplicate_user_group"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "CreateGroup",
+          "return": {
+            "error": "duplicate key value violates unique constraint"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "group_name": "test-group",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "description": "Test group",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "CreateGroup",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_policy_enforcer_add_resource_owner",
+      "description": "Should fail when policy enforcer AddResourceOwner fails",
+      "input": {
+        "group_name": "test-group",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "description": "Test group",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "CreateGroup",
+          "return": {
+            "user_group": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "name": "test-group",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+              "description": "Test group"
+            }
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "AddResourceOwner",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_policy_enforcer_add_resource_hierarchy",
+      "description": "Should fail when policy enforcer AddResourceHierarchy fails",
+      "input": {
+        "group_name": "test-group",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "description": "Test group",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "CreateGroup",
+          "return": {
+            "user_group": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "name": "test-group",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+              "description": "Test group"
+            }
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "AddResourceOwner",
+            "return": {}
+          },
+          {
+            "method": "AddResourceHierarchy",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          }
+        ]
+      }
+    }
+  ]
+} 

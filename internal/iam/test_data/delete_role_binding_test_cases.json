@@ -1,0 +1,144 @@
+{
+  "test_cases": [
+    {
+      "name": "successful_organization_role_binding_delete",
+      "description": "Successfully delete a role binding for an organization",
+      "input": {
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "successful_secret_group_role_binding_delete",
+      "description": "Successfully delete a role binding for a secret group",
+      "input": {
+        "resource_type": "secret_group",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": true,
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "successful_environment_role_binding_delete",
+      "description": "Successfully delete a role binding for an environment",
+      "input": {
+        "resource_type": "environment",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440007"
+      },
+      "expected": {
+        "success": true,
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "role_binding_not_found_error",
+      "description": "Fail to delete role binding when it doesn't exist",
+      "input": {
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "role binding not found"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": "role binding not found"
+          }
+        }
+      }
+    },
+    {
+      "name": "database_error",
+      "description": "Fail to delete role binding due to database error",
+      "input": {
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid_resource_type",
+      "description": "Fail to delete role binding with invalid resource type",
+      "input": {
+        "resource_type": "invalid_type",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "invalid resource type"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": "invalid resource type"
+          }
+        }
+      }
+    },
+    {
+      "name": "empty_resource_id",
+      "description": "Fail to delete role binding with empty resource ID",
+      "input": {
+        "resource_type": "organization",
+        "resource_id": "00000000-0000-0000-0000-000000000000"
+      },
+      "expected": {
+        "success": false,
+        "error": "invalid resource id"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": "invalid resource id"
+          }
+        }
+      }
+    }
+  ]
+} 

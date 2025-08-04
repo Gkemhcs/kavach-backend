@@ -1,0 +1,250 @@
+{
+  "test_cases": [
+    {
+      "name": "successful_organization_role_binding_create",
+      "description": "Successfully create a role binding for an organization",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": true,
+        "role_binding": {
+          "id": "550e8400-e29b-41d4-a716-446655440010",
+          "user_id": "550e8400-e29b-41d4-a716-446655440002",
+          "role": "admin",
+          "resource_type": "organization",
+          "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+          "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+        },
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440010",
+              "user_id": "550e8400-e29b-41d4-a716-446655440002",
+              "role": "admin",
+              "resource_type": "organization",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+            },
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "successful_secret_group_role_binding_create",
+      "description": "Successfully create a role binding for a secret group",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "role": "editor",
+        "resource_type": "secret_group",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440003",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": {
+          "uuid": "550e8400-e29b-41d4-a716-446655440003",
+          "valid": true
+        },
+        "environment_id": null
+      },
+      "expected": {
+        "success": true,
+        "role_binding": {
+          "id": "550e8400-e29b-41d4-a716-446655440011",
+          "user_id": "550e8400-e29b-41d4-a716-446655440002",
+          "role": "editor",
+          "resource_type": "secret_group",
+          "resource_id": "550e8400-e29b-41d4-a716-446655440003",
+          "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+          "secret_group_id": "550e8400-e29b-41d4-a716-446655440003"
+        },
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440011",
+              "user_id": "550e8400-e29b-41d4-a716-446655440002",
+              "role": "editor",
+              "resource_type": "secret_group",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440003",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440003"
+            },
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "successful_environment_role_binding_create",
+      "description": "Successfully create a role binding for an environment",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "role": "viewer",
+        "resource_type": "environment",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440007",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": {
+          "uuid": "550e8400-e29b-41d4-a716-446655440003",
+          "valid": true
+        },
+        "environment_id": {
+          "uuid": "550e8400-e29b-41d4-a716-446655440007",
+          "valid": true
+        }
+      },
+      "expected": {
+        "success": true,
+        "role_binding": {
+          "id": "550e8400-e29b-41d4-a716-446655440012",
+          "user_id": "550e8400-e29b-41d4-a716-446655440002",
+          "role": "viewer",
+          "resource_type": "environment",
+          "resource_id": "550e8400-e29b-41d4-a716-446655440007",
+          "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+          "secret_group_id": "550e8400-e29b-41d4-a716-446655440003",
+          "environment_id": "550e8400-e29b-41d4-a716-446655440007"
+        },
+        "error": null
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440012",
+              "user_id": "550e8400-e29b-41d4-a716-446655440002",
+              "role": "viewer",
+              "resource_type": "environment",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440007",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440003",
+              "environment_id": "550e8400-e29b-41d4-a716-446655440007"
+            },
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "duplicate_role_binding_error",
+      "description": "Fail to create role binding when it already exists",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "role_binding": null,
+        "error": "duplicate role binding"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": null,
+            "error": "duplicate role binding"
+          }
+        }
+      }
+    },
+    {
+      "name": "database_error",
+      "description": "Fail to create role binding due to database error",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "role_binding": null,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": null,
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid_user_id",
+      "description": "Fail to create role binding with invalid user ID",
+      "input": {
+        "user_id": "00000000-0000-0000-0000-000000000000",
+        "role": "admin",
+        "resource_type": "organization",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "role_binding": null,
+        "error": "invalid user id"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": null,
+            "error": "invalid user id"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid_resource_type",
+      "description": "Fail to create role binding with invalid resource type",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "role": "admin",
+        "resource_type": "invalid_type",
+        "resource_id": "550e8400-e29b-41d4-a716-446655440000",
+        "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+        "secret_group_id": null,
+        "environment_id": null
+      },
+      "expected": {
+        "success": false,
+        "role_binding": null,
+        "error": "invalid resource type"
+      },
+      "mock_setup": {
+        "iam_repo": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": null,
+            "error": "invalid resource type"
+          }
+        }
+      }
+    }
+  ]
+} 

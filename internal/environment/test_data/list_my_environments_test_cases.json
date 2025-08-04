@@ -1,0 +1,93 @@
+{
+  "test_cases": [
+    {
+      "name": "success_list_my_environments",
+      "description": "Should successfully list environments accessible to user",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "group_id": "550e8400-e29b-41d4-a716-446655440001",
+        "org_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "environments": [
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440003",
+            "name": "prod",
+            "secret_group_name": "Test Secret Group",
+            "role": "owner"
+          },
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440004",
+            "name": "dev",
+            "secret_group_name": "Test Secret Group",
+            "role": "member"
+          }
+        ]
+      },
+      "mock_setup": {
+        "iam_service": {
+          "method": "ListAccessibleEnvironments",
+          "return": {
+            "environments": [
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440003",
+                "name": "prod",
+                "secret_group_name": "Test Secret Group",
+                "role": "owner"
+              },
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440004",
+                "name": "dev",
+                "secret_group_name": "Test Secret Group",
+                "role": "member"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "success_empty_my_environments_list",
+      "description": "Should successfully return empty list when user has no access",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "group_id": "550e8400-e29b-41d4-a716-446655440001",
+        "org_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "environments": []
+      },
+      "mock_setup": {
+        "iam_service": {
+          "method": "ListAccessibleEnvironments",
+          "return": {
+            "environments": []
+          }
+        }
+      }
+    },
+    {
+      "name": "error_iam_service_error",
+      "description": "Should fail when IAM service fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "group_id": "550e8400-e29b-41d4-a716-446655440001",
+        "org_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "iam service error"
+      },
+      "mock_setup": {
+        "iam_service": {
+          "method": "ListAccessibleEnvironments",
+          "return": {
+            "error": "iam service error"
+          }
+        }
+      }
+    }
+  ]
+} 

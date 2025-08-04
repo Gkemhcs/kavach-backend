@@ -23,12 +23,12 @@ type OrganizationService struct {
 	repo           orgdb.Querier
 	logger         *logrus.Logger
 	iamService     iam.IamService
-	policyEnforcer *authz.Enforcer
+	policyEnforcer authz.Enforcer
 }
 
 // NewOrganizationService creates a new OrganizationService.
 // Used to inject dependencies and enable testability.
-func NewOrganizationService(repo orgdb.Querier, logger *logrus.Logger, iamService iam.IamService, policEnforcer *authz.Enforcer) *OrganizationService {
+func NewOrganizationService(repo orgdb.Querier, logger *logrus.Logger, iamService iam.IamService, policEnforcer authz.Enforcer) *OrganizationService {
 	return &OrganizationService{repo, logger, iamService, policEnforcer}
 
 }
@@ -125,8 +125,11 @@ func (s *OrganizationService) GetOrganization(ctx context.Context, userID, orgID
 func (s *OrganizationService) GetOrganizationByName(ctx context.Context, orgName string) (*orgdb.Organization, error) {
 
 	org, err := s.repo.GetOrganizationByName(ctx, orgName)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return nil, appErrors.ErrOrganizationNotFound
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, appErrors.ErrOrganizationNotFound
+		}
+		return nil, appErrors.ErrInternalServer
 	}
 	return &org, nil
 

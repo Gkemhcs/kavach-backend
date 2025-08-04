@@ -11,12 +11,12 @@ import (
 
 // DomainRouteHandler handles authorization for regular domain routes
 type DomainRouteHandler struct {
-	enforcer *authz.Enforcer
+	enforcer authz.Enforcer
 	logger   *logrus.Logger
 }
 
 // NewDomainRouteHandler creates a new domain route handler
-func NewDomainRouteHandler(enforcer *authz.Enforcer, logger *logrus.Logger) *DomainRouteHandler {
+func NewDomainRouteHandler(enforcer authz.Enforcer, logger *logrus.Logger) *DomainRouteHandler {
 	return &DomainRouteHandler{
 		enforcer: enforcer,
 		logger:   logger,

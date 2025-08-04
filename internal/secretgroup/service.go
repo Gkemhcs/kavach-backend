@@ -22,12 +22,12 @@ type SecretGroupService struct {
 	repo           secretgroupdb.Querier
 	logger         *logrus.Logger
 	iamService     iam.IamService
-	policyEnforcer *authz.Enforcer
+	policyEnforcer authz.Enforcer
 }
 
 // NewSecretGroupService creates a new SecretGroupService.
 // Used to inject dependencies and enable testability.
-func NewSecretGroupService(repo secretgroupdb.Querier, logger *logrus.Logger, iamService iam.IamService, policyEnforcer *authz.Enforcer) *SecretGroupService {
+func NewSecretGroupService(repo secretgroupdb.Querier, logger *logrus.Logger, iamService iam.IamService, policyEnforcer authz.Enforcer) *SecretGroupService {
 	return &SecretGroupService{repo, logger, iamService, policyEnforcer}
 }
 

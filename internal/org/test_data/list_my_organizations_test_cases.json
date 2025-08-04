@@ -1,0 +1,93 @@
+{
+  "test_cases": [
+    {
+      "name": "success_list_my_organizations",
+      "description": "Should successfully list organizations where user is a member",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "organizations": [
+          {
+            "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+            "organization_name": "Test Organization 1",
+            "role": "owner"
+          },
+          {
+            "organization_id": "550e8400-e29b-41d4-a716-446655440002",
+            "organization_name": "Test Organization 2",
+            "role": "admin"
+          },
+          {
+            "organization_id": "550e8400-e29b-41d4-a716-446655440003",
+            "organization_name": "Test Organization 3",
+            "role": "member"
+          }
+        ]
+      },
+      "mock_setup": {
+        "iam_service": {
+          "method": "ListAccessibleOrganizations",
+          "return": {
+            "organizations": [
+              {
+                "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+                "organization_name": "Test Organization 1",
+                "role": "owner"
+              },
+              {
+                "organization_id": "550e8400-e29b-41d4-a716-446655440002",
+                "organization_name": "Test Organization 2",
+                "role": "admin"
+              },
+              {
+                "organization_id": "550e8400-e29b-41d4-a716-446655440003",
+                "organization_name": "Test Organization 3",
+                "role": "member"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "success_empty_my_organizations_list",
+      "description": "Should successfully return empty list when user is not a member of any organization",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "organizations": []
+      },
+      "mock_setup": {
+        "iam_service": {
+          "method": "ListAccessibleOrganizations",
+          "return": {
+            "organizations": []
+          }
+        }
+      }
+    },
+    {
+      "name": "error_iam_service_error",
+      "description": "Should fail when IAM service fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "iam service error"
+      },
+      "mock_setup": {
+        "iam_service": {
+          "method": "ListAccessibleOrganizations",
+          "return": {
+            "error": "iam service error"
+          }
+        }
+      }
+    }
+  ]
+} 

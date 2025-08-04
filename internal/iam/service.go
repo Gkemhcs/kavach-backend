@@ -15,7 +15,7 @@ import (
 
 // NewIamService creates a new IamService instance with the provided dependencies.
 // This service handles business logic for IAM operations including role binding management.
-func NewIamService(iam_repo iam_db.Querier, userResolver types.UserResolver, userGroupResolver types.UserGroupResolver, logger *logrus.Logger, policyEnforcer *authz.Enforcer) *IamService {
+func NewIamService(iam_repo iam_db.Querier, userResolver types.UserResolver, userGroupResolver types.UserGroupResolver, logger *logrus.Logger, policyEnforcer authz.Enforcer) *IamService {
 	return &IamService{
 		iamRepo:           iam_repo,
 		userResolver:      userResolver,
@@ -60,7 +60,7 @@ type IamService struct {
 	logger            *logrus.Logger
 	userResolver      types.UserResolver
 	userGroupResolver types.UserGroupResolver
-	policyEnforcer    *authz.Enforcer
+	policyEnforcer    authz.Enforcer
 }
 
 // CreateRoleBinding creates a new role binding for a user on a specific resource.

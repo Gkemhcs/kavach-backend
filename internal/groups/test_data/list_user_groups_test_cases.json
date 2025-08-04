@@ -1,0 +1,81 @@
+{
+  "test_cases": [
+    {
+      "name": "success_list_user_groups",
+      "description": "Should successfully list user groups",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "user_groups": [
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440002",
+            "name": "developers",
+            "description": "Development team group"
+          },
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440003",
+            "name": "admins"
+          }
+        ]
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "ListGroupsByOrg",
+          "return": {
+            "user_groups": [
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440002",
+                "name": "developers",
+                "description": "Development team group"
+              },
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440003",
+                "name": "admins"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "success_list_user_groups_empty",
+      "description": "Should successfully return empty list when no groups exist",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "user_groups": []
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "ListGroupsByOrg",
+          "return": {
+            "user_groups": []
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "ListGroupsByOrg",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

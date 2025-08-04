@@ -1,0 +1,107 @@
+{
+  "test_cases": [
+    {
+      "name": "success_list_environments",
+      "description": "Should successfully list environments for a secret group",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "environments": [
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440003",
+            "name": "prod",
+            "description": "Production environment",
+            "secret_group_id": "550e8400-e29b-41d4-a716-446655440002"
+          },
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440004",
+            "name": "dev",
+            "description": "Development environment",
+            "secret_group_id": "550e8400-e29b-41d4-a716-446655440002"
+          }
+        ]
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "ListEnvironmentsBySecretGroup",
+          "return": {
+            "environments": [
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440003",
+                "name": "prod",
+                "description": "Production environment",
+                "secret_group_id": "550e8400-e29b-41d4-a716-446655440002"
+              },
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440004",
+                "name": "dev",
+                "description": "Development environment",
+                "secret_group_id": "550e8400-e29b-41d4-a716-446655440002"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "success_empty_environments_list",
+      "description": "Should successfully return empty list when no environments exist",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "environments": []
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "ListEnvironmentsBySecretGroup",
+          "return": {
+            "environments": []
+          }
+        }
+      }
+    },
+    {
+      "name": "error_invalid_org_id",
+      "description": "Should fail when organization ID is not a valid UUID",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "invalid-uuid",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "ListEnvironmentsBySecretGroup",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

@@ -1,0 +1,182 @@
+{
+  "test_cases": [
+    {
+      "name": "success_delete_environment",
+      "description": "Should successfully delete an environment",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": true
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "DeleteEnvironment",
+          "return": {}
+        },
+        "iam_service": {
+          "method": "DeleteRoleBinding",
+          "return": {}
+        },
+        "policy_enforcer": [
+          {
+            "method": "RemoveResource",
+            "return": {}
+          },
+          {
+            "method": "RemoveResourceHierarchy",
+            "return": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_invalid_env_id",
+      "description": "Should fail when environment ID is not a valid UUID",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "invalid-uuid"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_environment_not_found",
+      "description": "Should fail when environment is not found",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "environment_not_exist"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "DeleteEnvironment",
+          "return": {
+            "error": "sql: no rows in result set"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_foreign_key_violation",
+      "description": "Should fail when foreign key constraint is violated",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "foreign_key_constraint_violation"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "DeleteEnvironment",
+          "return": {
+            "error": "foreign key constraint violation"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "DeleteEnvironment",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_iam_service_error",
+      "description": "Should fail when IAM service fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": false,
+        "error": "iam service error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "DeleteEnvironment",
+          "return": {}
+        },
+        "iam_service": {
+          "method": "DeleteRoleBinding",
+          "return": {
+            "error": "iam service error"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_policy_enforcer_error",
+      "description": "Should fail when policy enforcer fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001",
+        "group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "env_id": "550e8400-e29b-41d4-a716-446655440003"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "DeleteEnvironment",
+          "return": {}
+        },
+        "iam_service": {
+          "method": "DeleteRoleBinding",
+          "return": {}
+        },
+        "policy_enforcer": [
+          {
+            "method": "RemoveResource",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          },
+          {
+            "method": "RemoveResourceHierarchy",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          }
+        ]
+      }
+    }
+  ]
+} 

@@ -1,0 +1,313 @@
+{
+  "test_cases": [
+    {
+      "name": "success_valid_environment_creation",
+      "description": "Should successfully create an environment with valid data",
+      "input": {
+        "name": "prod",
+        "description": "Production environment for testing",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "environment": {
+          "id": "550e8400-e29b-41d4-a716-446655440003",
+          "name": "prod",
+          "description": "Production environment for testing",
+          "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+        }
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "CreateEnvironment",
+          "return": {
+            "environment": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "name": "prod",
+              "description": "Production environment for testing",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "user_id": "550e8400-e29b-41d4-a716-446655440002",
+              "role": "owner",
+              "resource_type": "environment",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440003",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "AddResourceOwner",
+            "return": {}
+          },
+          {
+            "method": "AddResourceHierarchy",
+            "return": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "success_environment_without_description",
+      "description": "Should successfully create an environment without description",
+      "input": {
+        "name": "dev",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": true,
+        "environment": {
+          "id": "550e8400-e29b-41d4-a716-446655440003",
+          "name": "dev",
+          "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+        }
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "CreateEnvironment",
+          "return": {
+            "environment": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "name": "dev",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "user_id": "550e8400-e29b-41d4-a716-446655440002",
+              "role": "owner",
+              "resource_type": "environment",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440003",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "AddResourceOwner",
+            "return": {}
+          },
+          {
+            "method": "AddResourceHierarchy",
+            "return": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_invalid_user_id",
+      "description": "Should fail when user ID is not a valid UUID",
+      "input": {
+        "name": "prod",
+        "description": "Production environment",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "invalid-uuid"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_invalid_secret_group_id",
+      "description": "Should fail when secret group ID is not a valid UUID",
+      "input": {
+        "name": "prod",
+        "description": "Production environment",
+        "secret_group": "invalid-uuid",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_invalid_organization_id",
+      "description": "Should fail when organization ID is not a valid UUID",
+      "input": {
+        "name": "prod",
+        "description": "Production environment",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "invalid-uuid",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "name": "prod",
+        "description": "Production environment",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "internal_error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "CreateEnvironment",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_duplicate_environment",
+      "description": "Should fail when environment name already exists",
+      "input": {
+        "name": "prod",
+        "description": "Production environment",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "environment already exists"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "CreateEnvironment",
+          "return": {
+            "error": "duplicate key value violates unique constraint"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_environment_name_not_allowed",
+      "description": "Should fail when environment name is not allowed",
+      "input": {
+        "name": "invalid-name",
+        "description": "Invalid environment",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "environment_name_not_allowed"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "CreateEnvironment",
+          "return": {
+            "error": "check constraint violation"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_iam_service_error",
+      "description": "Should fail when IAM service fails",
+      "input": {
+        "name": "prod",
+        "description": "Production environment",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "iam service error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "CreateEnvironment",
+          "return": {
+            "environment": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "name": "prod",
+              "description": "Production environment",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "error": "iam service error"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_policy_enforcer_error",
+      "description": "Should fail when policy enforcer fails",
+      "input": {
+        "name": "prod",
+        "description": "Production environment",
+        "secret_group": "550e8400-e29b-41d4-a716-446655440001",
+        "organization": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "environment_repo": {
+          "method": "CreateEnvironment",
+          "return": {
+            "environment": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "name": "prod",
+              "description": "Production environment",
+              "secret_group_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        },
+        "iam_service": {
+          "method": "CreateRoleBinding",
+          "return": {
+            "role_binding": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "user_id": "550e8400-e29b-41d4-a716-446655440002",
+              "role": "owner",
+              "resource_type": "environment",
+              "resource_id": "550e8400-e29b-41d4-a716-446655440003",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "AddResourceOwner",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          }
+        ]
+      }
+    }
+  ]
+} 

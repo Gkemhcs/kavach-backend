@@ -1,0 +1,99 @@
+{
+  "test_cases": [
+    {
+      "name": "success_list_organizations",
+      "description": "Should successfully list organizations for a user",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "organizations": [
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440001",
+            "name": "Test Organization 1",
+            "description": "First test organization",
+            "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440002",
+            "name": "Test Organization 2",
+            "description": "Second test organization",
+            "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        ]
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "ListOrganizationsByOwner",
+          "return": {
+            "organizations": [
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440001",
+                "name": "Test Organization 1",
+                "description": "First test organization",
+                "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+              },
+              {
+                "id": "550e8400-e29b-41d4-a716-446655440002",
+                "name": "Test Organization 2",
+                "description": "Second test organization",
+                "owner_id": "550e8400-e29b-41d4-a716-446655440000"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "success_empty_organizations_list",
+      "description": "Should successfully return empty list when user has no organizations",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": true,
+        "organizations": []
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "ListOrganizationsByOwner",
+          "return": {
+            "organizations": []
+          }
+        }
+      }
+    },
+    {
+      "name": "error_invalid_user_id",
+      "description": "Should fail when user ID is not a valid UUID",
+      "input": {
+        "user_id": "invalid-uuid"
+      },
+      "expected": {
+        "success": false,
+        "error": "internal server error"
+      },
+      "mock_setup": {}
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "expected": {
+        "success": false,
+        "error": "internal server error"
+      },
+      "mock_setup": {
+        "org_repo": {
+          "method": "ListOrganizationsByOwner",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

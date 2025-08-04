@@ -1,0 +1,102 @@
+{
+  "test_cases": [
+    {
+      "name": "success_get_user_group_by_name",
+      "description": "Should successfully get user group by name",
+      "input": {
+        "group_name": "developers",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "user_group": {
+          "id": "550e8400-e29b-41d4-a716-446655440002",
+          "name": "developers",
+          "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+          "description": "Development team group"
+        }
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "GetGroupByName",
+          "return": {
+            "user_group": {
+              "id": "550e8400-e29b-41d4-a716-446655440002",
+              "name": "developers",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001",
+              "description": "Development team group"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "success_get_user_group_by_name_no_description",
+      "description": "Should successfully get user group by name without description",
+      "input": {
+        "group_name": "admins",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": true,
+        "user_group": {
+          "id": "550e8400-e29b-41d4-a716-446655440003",
+          "name": "admins",
+          "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+        }
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "GetGroupByName",
+          "return": {
+            "user_group": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "name": "admins",
+              "organization_id": "550e8400-e29b-41d4-a716-446655440001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "error_group_not_found",
+      "description": "Should fail when group name does not exist",
+      "input": {
+        "group_name": "nonexistent-group",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "user_group_not_exist"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "GetGroupByName",
+          "return": {
+            "error": "sql: no rows in result set"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "group_name": "test-group",
+        "org_id": "550e8400-e29b-41d4-a716-446655440001"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "user_group_repo": {
+          "method": "GetGroupByName",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    }
+  ]
+} 

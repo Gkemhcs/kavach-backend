@@ -1,0 +1,177 @@
+{
+  "test_cases": [
+    {
+      "name": "success_remove_group_member",
+      "description": "Should successfully remove a member from a user group",
+      "input": {
+        "user_group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "user_name": "john.doe"
+      },
+      "expected": {
+        "success": true
+      },
+      "mock_setup": {
+        "user_service": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "name": "John Doe",
+              "email": "john.doe@example.com"
+            }
+          }
+        },
+        "user_group_repo": {
+          "method": "RemoveGroupMember",
+          "return": {
+            "rows_affected": 1
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "RemoveUserFromGroup",
+            "return": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "error_user_not_found",
+      "description": "Should fail when user does not exist",
+      "input": {
+        "user_group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "user_name": "nonexistent.user"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "user_not_exist"
+      },
+      "mock_setup": {
+        "user_service": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "error": "sql: no rows in result set"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_membership_not_found",
+      "description": "Should fail when user is not a member of the group",
+      "input": {
+        "user_group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "user_name": "john.doe"
+      },
+      "expected": {
+        "success": false,
+        "error_code": "user_membership_not_exist"
+      },
+      "mock_setup": {
+        "user_service": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "name": "John Doe",
+              "email": "john.doe@example.com"
+            }
+          }
+        },
+        "user_group_repo": {
+          "method": "RemoveGroupMember",
+          "return": {
+            "rows_affected": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "error_database_error",
+      "description": "Should fail when database operation fails",
+      "input": {
+        "user_group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "user_name": "john.doe"
+      },
+      "expected": {
+        "success": false,
+        "error": "database connection failed"
+      },
+      "mock_setup": {
+        "user_service": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "name": "John Doe",
+              "email": "john.doe@example.com"
+            }
+          }
+        },
+        "user_group_repo": {
+          "method": "RemoveGroupMember",
+          "return": {
+            "error": "database connection failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_user_service_error",
+      "description": "Should fail when user service fails",
+      "input": {
+        "user_group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "user_name": "john.doe"
+      },
+      "expected": {
+        "success": false,
+        "error": "user service error"
+      },
+      "mock_setup": {
+        "user_service": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "error": "user service error"
+          }
+        }
+      }
+    },
+    {
+      "name": "error_policy_enforcer_error",
+      "description": "Should fail when policy enforcer fails",
+      "input": {
+        "user_group_id": "550e8400-e29b-41d4-a716-446655440002",
+        "user_name": "john.doe"
+      },
+      "expected": {
+        "success": false,
+        "error": "policy enforcer error"
+      },
+      "mock_setup": {
+        "user_service": {
+          "method": "GetUserInfoByGithubUserName",
+          "return": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440004",
+              "name": "John Doe",
+              "email": "john.doe@example.com"
+            }
+          }
+        },
+        "user_group_repo": {
+          "method": "RemoveGroupMember",
+          "return": {
+            "rows_affected": 1
+          }
+        },
+        "policy_enforcer": [
+          {
+            "method": "RemoveUserFromGroup",
+            "return": {
+              "error": "policy enforcer error"
+            }
+          }
+        ]
+      }
+    }
+  ]
+} 
