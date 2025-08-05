@@ -104,6 +104,18 @@ func (s *OrganizationService) ListMyOrganizations(ctx context.Context, userID st
 	return orgs, nil
 }
 
+// ListMyOrganizationsEnhanced lists all organizations where the user is a member
+// using enhanced RBAC with hierarchical inheritance and group membership support.
+func (s *OrganizationService) ListMyOrganizationsEnhanced(ctx context.Context, userID string) ([]iam_db.ListAccessibleOrganizationsRow, error) {
+	s.logger.Infof("Listing organizations with enhanced RBAC for user_id=%s", userID)
+
+	enhancedOrgs, err := s.iamService.ListAccessibleOrganizationsEnhanced(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return enhancedOrgs, nil
+}
+
 // GetOrganization gets a specific organization by ID for the user.
 func (s *OrganizationService) GetOrganization(ctx context.Context, userID, orgID string) (*orgdb.Organization, error) {
 	s.logger.Infof("Getting organization org_id=%s for user_id=%s", orgID, userID)
@@ -190,5 +202,27 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, orgID stri
 		return err
 	}
 	return nil
+}
 
+// ListOrganizationRoleBindings retrieves all role bindings for an organization with resolved names.
+func (s *OrganizationService) ListOrganizationRoleBindings(ctx context.Context, orgID string) ([]iam_db.ListOrganizationRoleBindingsRow, error) {
+	s.logger.WithFields(logrus.Fields{
+		"orgID": orgID,
+	}).Info("Listing organization role bindings")
+
+	bindings, err := s.iamService.ListOrganizationRoleBindings(ctx, orgID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID": orgID,
+			"error": err.Error(),
+		}).Error("Failed to list organization role bindings")
+		return nil, err
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"orgID":        orgID,
+		"bindingCount": len(bindings),
+	}).Info("Successfully retrieved organization role bindings")
+
+	return bindings, nil
 }

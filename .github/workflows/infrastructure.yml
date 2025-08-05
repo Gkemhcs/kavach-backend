@@ -1,0 +1,70 @@
+name: Infrastructure Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/**'
+
+env:
+  GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: 'Deploy Infrastructure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.7.0'
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="prefix=terraform/state"
+
+      - name: Terraform Plan & Apply
+        run: |
+          cd infra
+          terraform plan -out=tfplan
+          terraform apply tfplan
+
+      - name: Get Deployment URL
+        id: outputs
+        run: |
+          cd infra
+          echo "url=$(terraform output -raw cloud_run_url 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Infrastructure Deployed Successfully"
+          echo ""
+          echo "**Deployment URL:** ${{ steps.outputs.outputs.url }}"
+          echo "**Project:** ${{ env.GOOGLE_CLOUD_PROJECT }}"
+          echo "**Commit:** ${{ github.sha }}"
+          echo ""
+          echo "### 🔗 Links:"
+          echo "- [Cloud Console](https://console.cloud.google.com/run?project=${{ env.GOOGLE_CLOUD_PROJECT }})"
+          echo "- [Terraform State](https://console.cloud.google.com/storage/browser/${{ secrets.TF_STATE_BUCKET }})" 

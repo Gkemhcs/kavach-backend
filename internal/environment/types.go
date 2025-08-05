@@ -19,6 +19,7 @@ type ListAccessibleEnvironmentsRow struct {
 	Name            string `json:"name"`
 	SecretGroupName string `json:"secret_group_name"`
 	Role            string `json:"role"`
+	InheritedFrom   string `json:"inherited_from"`
 }
 
 // EnvironmentResponseData is the response body for environment data.

@@ -164,6 +164,7 @@ func (s *EnvironmentService) GetEnvironmentByName(ctx context.Context, environme
 	if err != nil {
 		return nil, err
 	}
+	s.logger.Info(groupID)
 	params := environmentdb.GetEnvironmentByNameParams{
 		SecretGroupID: groupId,
 		Name:          environmentName,
@@ -238,4 +239,43 @@ func (s *EnvironmentService) DeleteEnvironment(ctx context.Context, userID, orgI
 	}
 
 	return nil
+}
+
+// ListEnvironmentRoleBindings retrieves all role bindings for an environment with resolved names.
+func (s *EnvironmentService) ListEnvironmentRoleBindings(ctx context.Context, orgID, groupID, envID string) ([]iam_db.ListEnvironmentRoleBindingsRow, error) {
+	s.logger.WithFields(logrus.Fields{
+		"orgID":   orgID,
+		"groupID": groupID,
+		"envID":   envID,
+	}).Info("Listing environment role bindings")
+
+	// Parse the environment ID
+	envUUID, err := uuid.Parse(envID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"envID": envID,
+			"error": err.Error(),
+		}).Error("Failed to parse environment ID")
+		return nil, err
+	}
+
+	bindings, err := s.iamService.ListEnvironmentRoleBindings(ctx, envUUID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID":   orgID,
+			"groupID": groupID,
+			"envID":   envID,
+			"error":   err.Error(),
+		}).Error("Failed to list environment role bindings")
+		return nil, err
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"orgID":        orgID,
+		"groupID":      groupID,
+		"envID":        envID,
+		"bindingCount": len(bindings),
+	}).Info("Successfully retrieved environment role bindings")
+
+	return bindings, nil
 }

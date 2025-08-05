@@ -210,3 +210,39 @@ func (s *SecretGroupService) DeleteSecretGroup(ctx context.Context, userID, orgI
 	}
 	return nil
 }
+
+// ListSecretGroupRoleBindings retrieves all role bindings for a secret group with resolved names.
+func (s *SecretGroupService) ListSecretGroupRoleBindings(ctx context.Context, orgID, groupID string) ([]iam_db.ListSecretGroupRoleBindingsRow, error) {
+	s.logger.WithFields(logrus.Fields{
+		"orgID":   orgID,
+		"groupID": groupID,
+	}).Info("Listing secret group role bindings")
+
+	// Parse the group ID
+	groupUUID, err := uuid.Parse(groupID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"groupID": groupID,
+			"error":   err.Error(),
+		}).Error("Failed to parse group ID")
+		return nil, err
+	}
+
+	bindings, err := s.iamService.ListSecretGroupRoleBindings(ctx, groupUUID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID":   orgID,
+			"groupID": groupID,
+			"error":   err.Error(),
+		}).Error("Failed to list secret group role bindings")
+		return nil, err
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"orgID":        orgID,
+		"groupID":      groupID,
+		"bindingCount": len(bindings),
+	}).Info("Successfully retrieved secret group role bindings")
+
+	return bindings, nil
+}

@@ -48,6 +48,8 @@ packages:
     queries:
     - "internal/iam/queries.sql"
     - "internal/iam/permissions_management.sql"
+    - "internal/iam/enhanced_rbac_queries.sql"
+    - "internal/iam/ownership_transfer_queries.sql"
     schema: "internal/db/migrations"
     engine: "postgresql"
     emit_json_tags: true

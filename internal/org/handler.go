@@ -47,7 +47,7 @@ func RegisterOrganizationRoutes(handler *OrganizationHandler,
 	orgGroup := routerGroup.Group("/organizations")
 	orgGroup.Use(jwtMiddleware)
 
-	secretgroup.RegisterSecretGroupRoutes(secretGroupHandler, orgGroup, environmentHandler, secretHandler, providerHandler,jwtMiddleware)
+	secretgroup.RegisterSecretGroupRoutes(secretGroupHandler, orgGroup, environmentHandler, secretHandler, providerHandler, jwtMiddleware)
 	groups.RegisterUserGroupRoutes(userGroupHandler, orgGroup, jwtMiddleware)
 	// Now register organization routes
 	orgGroup.GET("/by-name/:orgName", handler.GetOrganizationByName)
@@ -58,6 +58,9 @@ func RegisterOrganizationRoutes(handler *OrganizationHandler,
 	orgGroup.GET(":orgID", handler.GetOrganization)
 	orgGroup.PUT(":orgID", handler.UpdateOrganization)
 	orgGroup.DELETE("/:orgID", handler.DeleteOrganization)
+
+	// Role bindings routes
+	orgGroup.GET("/:orgID/role-bindings", handler.ListOrganizationRoleBindings)
 
 }
 
@@ -209,4 +212,40 @@ func (h *OrganizationHandler) DeleteOrganization(c *gin.Context) {
 		return
 	}
 	utils.RespondSuccess(c, http.StatusOK, gin.H{"message": "organization deleted"})
+}
+
+// ListOrganizationRoleBindings handles GET /organizations/:orgID/role-bindings
+// Lists all role bindings for an organization with resolved user and group names.
+func (h *OrganizationHandler) ListOrganizationRoleBindings(c *gin.Context) {
+	orgID := c.Param("orgID")
+	if orgID == "" {
+		h.logger.Warn("List organization role bindings failed: missing organization ID")
+		utils.RespondError(c, http.StatusBadRequest, "missing_organization_id", "organization ID is required")
+		return
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"orgID": orgID,
+	}).Info("Listing organization role bindings")
+
+	bindings, err := h.service.ListOrganizationRoleBindings(c.Request.Context(), orgID)
+	if err != nil {
+		h.logger.WithFields(logrus.Fields{
+			"orgID": orgID,
+			"error": err.Error(),
+		}).Error("Failed to list organization role bindings")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_server_error", "failed to list organization role bindings")
+		return
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"orgID":        orgID,
+		"bindingCount": len(bindings),
+	}).Info("Successfully listed organization role bindings")
+
+	utils.RespondSuccess(c, http.StatusOK, gin.H{
+		"organization_id": orgID,
+		"bindings":        bindings,
+		"count":           len(bindings),
+	})
 }

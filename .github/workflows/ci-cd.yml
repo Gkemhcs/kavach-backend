@@ -1,0 +1,107 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'infra/**'
+
+env:
+  REGISTRY: us-docker.pkg.dev
+  IMAGE_NAME: kavach-backend
+  GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test:
+    name: 'Run Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Install SQLC
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+      - name: Generate SQLC Code
+        run: |
+          sqlc generate
+
+      - name: Run Tests
+        run: |
+          go test -v ./...
+
+  build:
+    name: 'Build and Deploy'
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker $REGISTRY --quiet
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_TAG="$REGISTRY/$GOOGLE_CLOUD_PROJECT/$IMAGE_NAME:${{ github.sha }}"
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE_TAG="$REGISTRY/$GOOGLE_CLOUD_PROJECT/$IMAGE_NAME:${{ github.sha }}"
+          
+          gcloud run deploy kavach-backend \
+            --image="$IMAGE_TAG" \
+            --region=us-central1 \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=1Gi \
+            --cpu=1 \
+            --max-instances=10 \
+            --min-instances=0 \
+            --concurrency=80 \
+            --timeout=300 \
+            --set-env-vars="VERSION=${{ github.sha }}" \
+            --quiet
+
+      - name: Get Deployment URL
+        id: url
+        run: |
+          URL=$(gcloud run services describe kavach-backend --region=us-central1 --format="value(status.url)")
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Application Deployed Successfully"
+          echo ""
+          echo "**Deployment URL:** ${{ steps.url.outputs.url }}"
+          echo "**Image Tag:** $REGISTRY/$GOOGLE_CLOUD_PROJECT/$IMAGE_NAME:${{ github.sha }}"
+          echo "**Commit:** ${{ github.sha }}"
+          echo ""
+          echo "### 🔗 Links:"
+          echo "- [Cloud Run Console](https://console.cloud.google.com/run?project=${{ env.GOOGLE_CLOUD_PROJECT }})"
+          echo "- [Artifact Registry](https://console.cloud.google.com/artifacts?project=${{ env.GOOGLE_CLOUD_PROJECT }})" 

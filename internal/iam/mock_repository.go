@@ -81,6 +81,45 @@ func (m *MockIamRepository) UpdateUserRole(ctx context.Context, arg iam_db.Updat
 	return args.Error(0)
 }
 
+// CheckUserPermission mocks the CheckUserPermission method
+func (m *MockIamRepository) CheckUserPermission(ctx context.Context, arg iam_db.CheckUserPermissionParams) (bool, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(bool), args.Error(1)
+}
+
+// GetUserEffectiveRole mocks the GetUserEffectiveRole method
+func (m *MockIamRepository) GetUserEffectiveRole(ctx context.Context, arg iam_db.GetUserEffectiveRoleParams) (iam_db.UserRole, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(iam_db.UserRole), args.Error(1)
+}
+
+// ListAccessibleEnvironmentsEnhanced mocks the ListAccessibleEnvironmentsEnhanced method
+func (m *MockIamRepository) ListAccessibleEnvironmentsEnhanced(ctx context.Context, arg iam_db.ListAccessibleEnvironmentsEnhancedParams) ([]iam_db.ListAccessibleEnvironmentsEnhancedRow, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]iam_db.ListAccessibleEnvironmentsEnhancedRow), args.Error(1)
+}
+
+// ListAccessibleOrganizationsEnhanced mocks the ListAccessibleOrganizationsEnhanced method
+func (m *MockIamRepository) ListAccessibleOrganizationsEnhanced(ctx context.Context, userID uuid.NullUUID) ([]iam_db.ListAccessibleOrganizationsEnhancedRow, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]iam_db.ListAccessibleOrganizationsEnhancedRow), args.Error(1)
+}
+
+// ListAccessibleSecretGroupsEnhanced mocks the ListAccessibleSecretGroupsEnhanced method
+func (m *MockIamRepository) ListAccessibleSecretGroupsEnhanced(ctx context.Context, arg iam_db.ListAccessibleSecretGroupsEnhancedParams) ([]iam_db.ListAccessibleSecretGroupsEnhancedRow, error) {
+	args := m.Called(ctx, arg)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]iam_db.ListAccessibleSecretGroupsEnhancedRow), args.Error(1)
+}
+
 // MockSqlResult is a mock implementation of sql.Result for testing
 type MockSqlResult struct {
 	mock.Mock

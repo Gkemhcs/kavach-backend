@@ -116,42 +116,182 @@ func (s *IamService) ListAccessibleOrganizations(ctx context.Context, userID str
 	return bindings, nil
 }
 
-// ListAccessibleSecretGroups retrieves all secret groups within an organization that a user has access to.
-// Returns secret groups with the user's role level for each accessible group.
-func (s *IamService) ListAccessibleSecretGroups(ctx context.Context, userID, orgID string) ([]iam_db.ListAccessibleSecretGroupsRow, error) {
-	params := iam_db.ListAccessibleSecretGroupsParams{
-		UserID: uuid.NullUUID{
-			UUID:  uuid.MustParse(userID),
-			Valid: true,
-		},
-		OrganizationID: uuid.MustParse(orgID),
-	}
-	bindings, err := s.iamRepo.ListAccessibleSecretGroups(ctx, params)
+// ListAccessibleOrganizationsEnhanced retrieves all organizations that a user has access to
+// using enhanced RBAC with hierarchical inheritance and group membership support.
+// Returns organizations with the user's effective role level for each accessible organization.
+func (s *IamService) ListAccessibleOrganizationsEnhanced(ctx context.Context, userID string) ([]iam_db.ListAccessibleOrganizationsRow, error) {
+	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, err
 	}
-	return bindings, nil
+	bindings, err := s.iamRepo.ListAccessibleOrganizationsEnhanced(ctx, uuid.NullUUID{
+		UUID:  userUUID,
+		Valid: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return convertEnhancedToLegacyOrgResults(bindings), nil
+}
+
+// convertEnhancedToLegacyOrgResults converts enhanced RBAC results to legacy format
+// for backward compatibility with existing code.
+func convertEnhancedToLegacyOrgResults(enhanced []iam_db.ListAccessibleOrganizationsEnhancedRow) []iam_db.ListAccessibleOrganizationsRow {
+	legacy := make([]iam_db.ListAccessibleOrganizationsRow, len(enhanced))
+	for i, row := range enhanced {
+		legacy[i] = iam_db.ListAccessibleOrganizationsRow(row)
+	}
+	return legacy
+}
+
+// convertEnhancedToLegacySecretGroupResults converts enhanced RBAC results to legacy format
+// for backward compatibility with existing code.
+func convertEnhancedToLegacySecretGroupResults(enhanced []iam_db.ListAccessibleSecretGroupsEnhancedRow) []iam_db.ListAccessibleSecretGroupsRow {
+	legacy := make([]iam_db.ListAccessibleSecretGroupsRow, len(enhanced))
+	for i, row := range enhanced {
+		legacy[i] = iam_db.ListAccessibleSecretGroupsRow{
+			ID:               uuid.NullUUID{UUID: row.ID, Valid: true},
+			Name:             row.Name,
+			OrganizationName: row.OrganizationName,
+			Role:             row.Role,
+			InheritedFrom:    row.InheritedFrom,
+		}
+	}
+	return legacy
+}
+
+// convertEnhancedToLegacyEnvironmentResults converts enhanced RBAC results to legacy format
+// for backward compatibility with existing code.
+func convertEnhancedToLegacyEnvironmentResults(enhanced []iam_db.ListAccessibleEnvironmentsEnhancedRow) []iam_db.ListAccessibleEnvironmentsRow {
+	legacy := make([]iam_db.ListAccessibleEnvironmentsRow, len(enhanced))
+	for i, row := range enhanced {
+		legacy[i] = iam_db.ListAccessibleEnvironmentsRow{
+			ID:              uuid.NullUUID{UUID: row.ID, Valid: true},
+			Name:            row.Name,
+			SecretGroupName: row.SecretGroupName,
+			Role:            row.Role,
+			InheritedFrom:   row.InheritedFrom,
+		}
+	}
+	return legacy
+}
+
+// ListAccessibleSecretGroups retrieves all secret groups within an organization that a user has access to.
+// Returns secret groups with the user's role level for each accessible group.
+func (s *IamService) ListAccessibleSecretGroups(ctx context.Context, userID, orgID string) ([]iam_db.ListAccessibleSecretGroupsRow, error) {
+	return s.ListAccessibleSecretGroupsEnhanced(ctx, userID, orgID)
+}
+
+// ListAccessibleSecretGroupsEnhanced retrieves all secret groups within an organization that a user has access to
+// using enhanced RBAC with hierarchical inheritance and group membership support.
+// Returns secret groups with the user's effective role level for each accessible group.
+func (s *IamService) ListAccessibleSecretGroupsEnhanced(ctx context.Context, userID, orgID string) ([]iam_db.ListAccessibleSecretGroupsRow, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, err
+	}
+	params := iam_db.ListAccessibleSecretGroupsEnhancedParams{
+		UserID: uuid.NullUUID{
+			UUID:  userUUID,
+			Valid: true,
+		},
+		OrganizationID: orgUUID,
+	}
+	bindings, err := s.iamRepo.ListAccessibleSecretGroupsEnhanced(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return convertEnhancedToLegacySecretGroupResults(bindings), nil
+}
+
+// ListAccessibleSecretGroupsEnhancedWithInheritance retrieves all secret groups within an organization that a user has access to
+// using enhanced RBAC with hierarchical inheritance and group membership support.
+// Returns secret groups with the user's effective role level and inheritance information for each accessible group.
+func (s *IamService) ListAccessibleSecretGroupsEnhancedWithInheritance(ctx context.Context, userID, orgID string) ([]iam_db.ListAccessibleSecretGroupsEnhancedRow, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, err
+	}
+	params := iam_db.ListAccessibleSecretGroupsEnhancedParams{
+		UserID: uuid.NullUUID{
+			UUID:  userUUID,
+			Valid: true,
+		},
+		OrganizationID: orgUUID,
+	}
+	return s.iamRepo.ListAccessibleSecretGroupsEnhanced(ctx, params)
 }
 
 // ListAccessibleEnvironments retrieves all environments within a secret group that a user has access to.
 // Returns environments with the user's role level for each accessible environment.
 func (s *IamService) ListAccessibleEnvironments(ctx context.Context, userID, orgID, groupID string) ([]iam_db.ListAccessibleEnvironmentsRow, error) {
-	params := iam_db.ListAccessibleEnvironmentsParams{
-		UserID: uuid.NullUUID{
-			UUID:  uuid.MustParse(userID),
-			Valid: true,
-		},
-		OrganizationID: uuid.MustParse(orgID),
-		SecretGroupID: uuid.NullUUID{
-			UUID:  uuid.MustParse(groupID),
-			Valid: true,
-		},
-	}
-	bindings, err := s.iamRepo.ListAccessibleEnvironments(ctx, params)
+	return s.ListAccessibleEnvironmentsEnhanced(ctx, userID, orgID, groupID)
+}
+
+// ListAccessibleEnvironmentsEnhanced retrieves all environments within a secret group that a user has access to
+// using enhanced RBAC with hierarchical inheritance and group membership support.
+// Returns environments with the user's effective role level for each accessible environment.
+func (s *IamService) ListAccessibleEnvironmentsEnhanced(ctx context.Context, userID, orgID, groupID string) ([]iam_db.ListAccessibleEnvironmentsRow, error) {
+	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, err
 	}
-	return bindings, nil
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, err
+	}
+	groupUUID, err := uuid.Parse(groupID)
+	if err != nil {
+		return nil, err
+	}
+	params := iam_db.ListAccessibleEnvironmentsEnhancedParams{
+		UserID: uuid.NullUUID{
+			UUID:  userUUID,
+			Valid: true,
+		},
+		OrganizationID: orgUUID,
+		SecretGroupID:  groupUUID,
+	}
+	bindings, err := s.iamRepo.ListAccessibleEnvironmentsEnhanced(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return convertEnhancedToLegacyEnvironmentResults(bindings), nil
+}
+
+// ListAccessibleEnvironmentsEnhancedWithInheritance retrieves all environments within a secret group that a user has access to
+// using enhanced RBAC with hierarchical inheritance and group membership support.
+// Returns environments with the user's effective role level and inheritance information for each accessible environment.
+func (s *IamService) ListAccessibleEnvironmentsEnhancedWithInheritance(ctx context.Context, userID, orgID, groupID string) ([]iam_db.ListAccessibleEnvironmentsEnhancedRow, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, err
+	}
+	groupUUID, err := uuid.Parse(groupID)
+	if err != nil {
+		return nil, err
+	}
+	params := iam_db.ListAccessibleEnvironmentsEnhancedParams{
+		UserID: uuid.NullUUID{
+			UUID:  userUUID,
+			Valid: true,
+		},
+		OrganizationID: orgUUID,
+		SecretGroupID:  groupUUID,
+	}
+	return s.iamRepo.ListAccessibleEnvironmentsEnhanced(ctx, params)
 }
 
 // GrantRoleBinding grants a role to either a user or a user group on a specific resource.
@@ -441,5 +581,444 @@ func (s *IamService) RevokeRoleBinding(ctx context.Context, req RevokeRoleBindin
 	}
 	logEntry.Info("successfully removed policy and all child resource policies")
 
+	// Handle ownership transfer for organization and secret group revocations
+	if req.ResourceType == "organization" || req.ResourceType == "secret_group" {
+		err = s.handleOwnershipTransfer(ctx, req, params)
+		if err != nil {
+			logEntry.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("Failed to handle ownership transfer during role binding revocation")
+			// Don't return error here as the role binding was already revoked
+			// Just log the ownership transfer failure
+		}
+	}
+
 	return nil
+}
+
+// handleOwnershipTransfer handles the transfer of child resource ownership when revoking role bindings
+func (s *IamService) handleOwnershipTransfer(ctx context.Context, req RevokeRoleBindingRequest, params iam_db.RevokeRoleBindingParams) error {
+	logEntry := s.logger.WithFields(logrus.Fields{
+		"operation":    "ownership_transfer",
+		"resourceType": req.ResourceType,
+		"resourceID":   req.ResourceID.String(),
+		"userName":     req.UserName,
+		"groupName":    req.GroupName,
+	})
+
+	logEntry.Info("Starting ownership transfer process")
+
+	// Get the parent resource owner
+	var parentOwnerID uuid.UUID
+	var err error
+
+	if req.ResourceType == "organization" {
+		parentOwnerID, err = s.getOrganizationOwner(ctx, req.ResourceID)
+	} else if req.ResourceType == "secret_group" {
+		parentOwnerID, err = s.getSecretGroupOwner(ctx, req.ResourceID)
+	} else {
+		// No ownership transfer needed for environments
+		return nil
+	}
+
+	if err != nil {
+		logEntry.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to get parent resource owner")
+		return err
+	}
+
+	logEntry.WithFields(logrus.Fields{
+		"parentOwnerID": parentOwnerID.String(),
+	}).Info("Found parent resource owner")
+
+	// Handle user-based revocation
+	if req.UserName != "" {
+		err = s.transferUserOwnership(ctx, req, parentOwnerID, params.UserID.UUID)
+	} else {
+		// Handle group-based revocation
+		err = s.transferGroupOwnership(ctx, req, parentOwnerID, params.GroupID.UUID)
+	}
+
+	if err != nil {
+		logEntry.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to transfer ownership")
+		return err
+	}
+
+	logEntry.Info("Ownership transfer completed successfully")
+	return nil
+}
+
+// getOrganizationOwner gets the owner of an organization
+func (s *IamService) getOrganizationOwner(ctx context.Context, orgID uuid.UUID) (uuid.UUID, error) {
+	owner, err := s.iamRepo.GetOrganizationOwner(ctx, orgID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return owner.UserID.UUID, nil
+}
+
+// getSecretGroupOwner gets the owner of a secret group
+func (s *IamService) getSecretGroupOwner(ctx context.Context, groupID uuid.UUID) (uuid.UUID, error) {
+	owner, err := s.iamRepo.GetSecretGroupOwner(ctx, groupID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return owner.UserID.UUID, nil
+}
+
+// transferUserOwnership transfers ownership of child resources created by a revoked user
+func (s *IamService) transferUserOwnership(ctx context.Context, req RevokeRoleBindingRequest, parentOwnerID, revokedUserID uuid.UUID) error {
+	logEntry := s.logger.WithFields(logrus.Fields{
+		"operation":     "transfer_user_ownership",
+		"resourceType":  req.ResourceType,
+		"resourceID":    req.ResourceID.String(),
+		"revokedUserID": revokedUserID.String(),
+		"parentOwnerID": parentOwnerID.String(),
+	})
+
+	if req.ResourceType == "organization" {
+		// Transfer secret groups where the revoked user has role bindings
+		secretGroups, err := s.iamRepo.GetSecretGroupsWithUserRoleBindings(ctx, iam_db.GetSecretGroupsWithUserRoleBindingsParams{
+			OrganizationID: req.OrganizationID,
+			UserID:         uuid.NullUUID{UUID: revokedUserID, Valid: true},
+		})
+		if err != nil {
+			logEntry.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("Failed to get secret groups with user role bindings")
+			return err
+		}
+
+		if len(secretGroups) > 0 {
+			logEntry.WithFields(logrus.Fields{
+				"secretGroupCount": len(secretGroups),
+			}).Info("Found secret groups to transfer ownership")
+
+			// Extract secret group IDs
+			secretGroupIDs := make([]uuid.UUID, len(secretGroups))
+			for i, sg := range secretGroups {
+				secretGroupIDs[i] = sg.ID
+			}
+
+			// Batch transfer ownership by updating role bindings
+			err = s.iamRepo.BatchTransferSecretGroupRoleBindingOwnership(ctx, iam_db.BatchTransferSecretGroupRoleBindingOwnershipParams{
+				Column1: secretGroupIDs,
+				UserID:  uuid.NullUUID{UUID: parentOwnerID, Valid: true},
+			})
+			if err != nil {
+				logEntry.WithFields(logrus.Fields{
+					"error": err.Error(),
+				}).Error("Failed to batch transfer secret group role binding ownership")
+				return err
+			}
+
+			logEntry.WithFields(logrus.Fields{
+				"transferredSecretGroups": len(secretGroups),
+			}).Info("Successfully transferred secret group ownership")
+
+			// Also transfer ownership of environments within these secret groups
+			for _, secretGroup := range secretGroups {
+				environments, err := s.iamRepo.GetEnvironmentsWithUserRoleBindings(ctx, iam_db.GetEnvironmentsWithUserRoleBindingsParams{
+					SecretGroupID: secretGroup.ID,
+					UserID:        uuid.NullUUID{UUID: revokedUserID, Valid: true},
+				})
+				if err != nil {
+					logEntry.WithFields(logrus.Fields{
+						"error":         err.Error(),
+						"secretGroupID": secretGroup.ID.String(),
+					}).Error("Failed to get environments with user role bindings for secret group")
+					continue // Continue with other secret groups even if one fails
+				}
+
+				if len(environments) > 0 {
+					logEntry.WithFields(logrus.Fields{
+						"secretGroupID":    secretGroup.ID.String(),
+						"environmentCount": len(environments),
+					}).Info("Found environments to transfer ownership within secret group")
+
+					// Extract environment IDs
+					environmentIDs := make([]uuid.UUID, len(environments))
+					for i, env := range environments {
+						environmentIDs[i] = env.ID
+					}
+
+					// Batch transfer ownership by updating role bindings
+					err = s.iamRepo.BatchTransferEnvironmentRoleBindingOwnership(ctx, iam_db.BatchTransferEnvironmentRoleBindingOwnershipParams{
+						Column1: environmentIDs,
+						UserID:  uuid.NullUUID{UUID: parentOwnerID, Valid: true},
+					})
+					if err != nil {
+						logEntry.WithFields(logrus.Fields{
+							"error":          err.Error(),
+							"secretGroupID":  secretGroup.ID.String(),
+							"environmentIDs": environmentIDs,
+						}).Error("Failed to batch transfer environment role binding ownership")
+						continue
+					}
+
+					logEntry.WithFields(logrus.Fields{
+						"secretGroupID":           secretGroup.ID.String(),
+						"transferredEnvironments": len(environments),
+					}).Info("Successfully transferred environment ownership within secret group")
+				}
+			}
+		}
+
+	} else if req.ResourceType == "secret_group" {
+		// Transfer environments where the revoked user has role bindings
+		environments, err := s.iamRepo.GetEnvironmentsWithUserRoleBindings(ctx, iam_db.GetEnvironmentsWithUserRoleBindingsParams{
+			SecretGroupID: req.SecretGroupID.UUID,
+			UserID:        uuid.NullUUID{UUID: revokedUserID, Valid: true},
+		})
+		if err != nil {
+			logEntry.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("Failed to get environments with user role bindings")
+			return err
+		}
+
+		if len(environments) > 0 {
+			logEntry.WithFields(logrus.Fields{
+				"environmentCount": len(environments),
+			}).Info("Found environments to transfer ownership")
+
+			// Extract environment IDs
+			environmentIDs := make([]uuid.UUID, len(environments))
+			for i, env := range environments {
+				environmentIDs[i] = env.ID
+			}
+
+			// Batch transfer ownership by updating role bindings
+			err = s.iamRepo.BatchTransferEnvironmentRoleBindingOwnership(ctx, iam_db.BatchTransferEnvironmentRoleBindingOwnershipParams{
+				Column1: environmentIDs,
+				UserID:  uuid.NullUUID{UUID: parentOwnerID, Valid: true},
+			})
+			if err != nil {
+				logEntry.WithFields(logrus.Fields{
+					"error": err.Error(),
+				}).Error("Failed to batch transfer environment role binding ownership")
+				return err
+			}
+
+			logEntry.WithFields(logrus.Fields{
+				"transferredEnvironments": len(environments),
+			}).Info("Successfully transferred environment ownership")
+		}
+	}
+
+	return nil
+}
+
+// transferGroupOwnership transfers ownership of child resources created by members of a revoked group
+func (s *IamService) transferGroupOwnership(ctx context.Context, req RevokeRoleBindingRequest, parentOwnerID, revokedGroupID uuid.UUID) error {
+	logEntry := s.logger.WithFields(logrus.Fields{
+		"operation":      "transfer_group_ownership",
+		"resourceType":   req.ResourceType,
+		"resourceID":     req.ResourceID.String(),
+		"revokedGroupID": revokedGroupID.String(),
+		"parentOwnerID":  parentOwnerID.String(),
+	})
+
+	if req.ResourceType == "organization" {
+		// Transfer secret groups where members of the revoked group have role bindings
+		secretGroups, err := s.iamRepo.GetSecretGroupsWithGroupRoleBindings(ctx, iam_db.GetSecretGroupsWithGroupRoleBindingsParams{
+			OrganizationID: req.OrganizationID,
+			UserGroupID:    revokedGroupID,
+		})
+		if err != nil {
+			logEntry.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("Failed to get secret groups with group role bindings")
+			return err
+		}
+
+		if len(secretGroups) > 0 {
+			logEntry.WithFields(logrus.Fields{
+				"secretGroupCount": len(secretGroups),
+			}).Info("Found secret groups to transfer ownership from group members")
+
+			// Extract secret group IDs
+			secretGroupIDs := make([]uuid.UUID, len(secretGroups))
+			for i, sg := range secretGroups {
+				secretGroupIDs[i] = sg.ID
+			}
+
+			// Batch transfer ownership by updating role bindings
+			err = s.iamRepo.BatchTransferSecretGroupRoleBindingOwnership(ctx, iam_db.BatchTransferSecretGroupRoleBindingOwnershipParams{
+				Column1: secretGroupIDs,
+				UserID:  uuid.NullUUID{UUID: parentOwnerID, Valid: true},
+			})
+			if err != nil {
+				logEntry.WithFields(logrus.Fields{
+					"error": err.Error(),
+				}).Error("Failed to batch transfer secret group role binding ownership from group members")
+				return err
+			}
+
+			logEntry.WithFields(logrus.Fields{
+				"transferredSecretGroups": len(secretGroups),
+			}).Info("Successfully transferred secret group ownership from group members")
+
+			// Also transfer ownership of environments within these secret groups
+			for _, secretGroup := range secretGroups {
+				environments, err := s.iamRepo.GetEnvironmentsWithGroupRoleBindings(ctx, iam_db.GetEnvironmentsWithGroupRoleBindingsParams{
+					SecretGroupID: secretGroup.ID,
+					UserGroupID:   revokedGroupID,
+				})
+				if err != nil {
+					logEntry.WithFields(logrus.Fields{
+						"error":         err.Error(),
+						"secretGroupID": secretGroup.ID.String(),
+					}).Error("Failed to get environments with group role bindings for secret group")
+					continue // Continue with other secret groups even if one fails
+				}
+
+				if len(environments) > 0 {
+					logEntry.WithFields(logrus.Fields{
+						"secretGroupID":    secretGroup.ID.String(),
+						"environmentCount": len(environments),
+					}).Info("Found environments to transfer ownership within secret group from group members")
+
+					// Extract environment IDs
+					environmentIDs := make([]uuid.UUID, len(environments))
+					for i, env := range environments {
+						environmentIDs[i] = env.ID
+					}
+
+					// Batch transfer ownership by updating role bindings
+					err = s.iamRepo.BatchTransferEnvironmentRoleBindingOwnership(ctx, iam_db.BatchTransferEnvironmentRoleBindingOwnershipParams{
+						Column1: environmentIDs,
+						UserID:  uuid.NullUUID{UUID: parentOwnerID, Valid: true},
+					})
+					if err != nil {
+						logEntry.WithFields(logrus.Fields{
+							"error":          err.Error(),
+							"secretGroupID":  secretGroup.ID.String(),
+							"environmentIDs": environmentIDs,
+						}).Error("Failed to batch transfer environment role binding ownership from group members")
+						continue
+					}
+
+					logEntry.WithFields(logrus.Fields{
+						"secretGroupID":           secretGroup.ID.String(),
+						"transferredEnvironments": len(environments),
+					}).Info("Successfully transferred environment ownership within secret group from group members")
+				}
+			}
+		}
+
+	} else if req.ResourceType == "secret_group" {
+		// Transfer environments where members of the revoked group have role bindings
+		environments, err := s.iamRepo.GetEnvironmentsWithGroupRoleBindings(ctx, iam_db.GetEnvironmentsWithGroupRoleBindingsParams{
+			SecretGroupID: req.SecretGroupID.UUID,
+			UserGroupID:   revokedGroupID,
+		})
+		if err != nil {
+			logEntry.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("Failed to get environments with group role bindings")
+			return err
+		}
+
+		if len(environments) > 0 {
+			logEntry.WithFields(logrus.Fields{
+				"environmentCount": len(environments),
+			}).Info("Found environments to transfer ownership from group members")
+
+			// Extract environment IDs
+			environmentIDs := make([]uuid.UUID, len(environments))
+			for i, env := range environments {
+				environmentIDs[i] = env.ID
+			}
+
+			// Batch transfer ownership by updating role bindings
+			err = s.iamRepo.BatchTransferEnvironmentRoleBindingOwnership(ctx, iam_db.BatchTransferEnvironmentRoleBindingOwnershipParams{
+				Column1: environmentIDs,
+				UserID:  uuid.NullUUID{UUID: parentOwnerID, Valid: true},
+			})
+			if err != nil {
+				logEntry.WithFields(logrus.Fields{
+					"error": err.Error(),
+				}).Error("Failed to batch transfer environment role binding ownership from group members")
+				return err
+			}
+
+			logEntry.WithFields(logrus.Fields{
+				"transferredEnvironments": len(environments),
+			}).Info("Successfully transferred environment ownership from group members")
+		}
+	}
+
+	return nil
+}
+
+// ListOrganizationRoleBindings retrieves all role bindings for an organization with resolved names
+func (s *IamService) ListOrganizationRoleBindings(ctx context.Context, orgID string) ([]iam_db.ListOrganizationRoleBindingsRow, error) {
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	bindings, err := s.iamRepo.ListOrganizationRoleBindings(ctx, orgUUID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID": orgID,
+			"error": err.Error(),
+		}).Error("Failed to list organization role bindings")
+		return nil, err
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"orgID":        orgID,
+		"bindingCount": len(bindings),
+	}).Info("Successfully retrieved organization role bindings")
+
+	return bindings, nil
+}
+
+// ListSecretGroupRoleBindings retrieves all role bindings for a secret group with resolved names
+func (s *IamService) ListSecretGroupRoleBindings(ctx context.Context, groupID uuid.UUID) ([]iam_db.ListSecretGroupRoleBindingsRow, error) {
+	bindings, err := s.iamRepo.ListSecretGroupRoleBindings(ctx, uuid.NullUUID{
+		UUID:  groupID,
+		Valid: true,
+	})
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"groupID": groupID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to list secret group role bindings")
+		return nil, err
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"groupID":      groupID.String(),
+		"bindingCount": len(bindings),
+	}).Info("Successfully retrieved secret group role bindings")
+
+	return bindings, nil
+}
+
+// ListEnvironmentRoleBindings retrieves all role bindings for an environment with resolved names
+func (s *IamService) ListEnvironmentRoleBindings(ctx context.Context, envID uuid.UUID) ([]iam_db.ListEnvironmentRoleBindingsRow, error) {
+	bindings, err := s.iamRepo.ListEnvironmentRoleBindings(ctx, uuid.NullUUID{
+		UUID:  envID,
+		Valid: true,
+	})
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"envID": envID.String(),
+			"error": err.Error(),
+		}).Error("Failed to list environment role bindings")
+		return nil, err
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"envID":        envID.String(),
+		"bindingCount": len(bindings),
+	}).Info("Successfully retrieved environment role bindings")
+
+	return bindings, nil
 }

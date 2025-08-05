@@ -12,17 +12,60 @@ import (
 )
 
 type Querier interface {
+	// Transfer ownership of multiple environments by updating role bindings
+	BatchTransferEnvironmentRoleBindingOwnership(ctx context.Context, arg BatchTransferEnvironmentRoleBindingOwnershipParams) error
+	// ============================================================================
+	// 4. BATCH OWNERSHIP TRANSFER OPERATIONS
+	// ============================================================================
+	// Transfer ownership of multiple secret groups by updating role bindings
+	BatchTransferSecretGroupRoleBindingOwnership(ctx context.Context, arg BatchTransferSecretGroupRoleBindingOwnershipParams) error
+	// Check if user has specific permission on resource
+	CheckUserPermission(ctx context.Context, arg CheckUserPermissionParams) (bool, error)
+	// Create an ownership role binding for an environment if it doesn't exist
+	CreateEnvironmentOwnershipRoleBinding(ctx context.Context, arg CreateEnvironmentOwnershipRoleBindingParams) error
 	// CreateRoleBinding: Creates a new role binding for a user on a specific resource
 	// Used internally for creating role bindings with explicit user IDs and resource references
 	// Returns the complete role binding record including generated ID and timestamps
 	CreateRoleBinding(ctx context.Context, arg CreateRoleBindingParams) (RoleBinding, error)
+	// ============================================================================
+	// 5. CREATE OWNERSHIP ROLE BINDINGS IF THEY DON'T EXIST
+	// ============================================================================
+	// Create an ownership role binding for a secret group if it doesn't exist
+	CreateSecretGroupOwnershipRoleBinding(ctx context.Context, arg CreateSecretGroupOwnershipRoleBindingParams) error
 	// DeleteRoleBinding: Removes a specific role binding from the system
 	// Deletes the exact role binding identified by the composite key
 	DeleteRoleBinding(ctx context.Context, arg DeleteRoleBindingParams) error
+	// Find all environments where members of the revoked group have role bindings
+	GetEnvironmentsWithGroupRoleBindings(ctx context.Context, arg GetEnvironmentsWithGroupRoleBindingsParams) ([]GetEnvironmentsWithGroupRoleBindingsRow, error)
+	// Find all environments where the revoked user has role bindings
+	GetEnvironmentsWithUserRoleBindings(ctx context.Context, arg GetEnvironmentsWithUserRoleBindingsParams) ([]GetEnvironmentsWithUserRoleBindingsRow, error)
+	// Ownership Transfer Queries for RBAC System
+	// These queries handle ownership transfer when revoking role bindings
+	// ============================================================================
+	// 1. GET PARENT RESOURCE OWNER
+	// ============================================================================
+	// Get the owner of an organization from role_bindings table
+	GetOrganizationOwner(ctx context.Context, resourceID uuid.UUID) (GetOrganizationOwnerRow, error)
+	// Get all role bindings for a specific resource
+	GetResourceRoleBindings(ctx context.Context, arg GetResourceRoleBindingsParams) ([]GetResourceRoleBindingsRow, error)
 	// GetRoleBinding: Retrieves a specific role binding by its composite key
 	// Used for validation and lookup operations when all binding parameters are known
 	// Returns complete role binding record if found
 	GetRoleBinding(ctx context.Context, arg GetRoleBindingParams) (RoleBinding, error)
+	// Get the owner of a secret group from role_bindings table
+	GetSecretGroupOwner(ctx context.Context, resourceID uuid.UUID) (GetSecretGroupOwnerRow, error)
+	// Find all secret groups where members of the revoked group have role bindings
+	GetSecretGroupsWithGroupRoleBindings(ctx context.Context, arg GetSecretGroupsWithGroupRoleBindingsParams) ([]SecretGroup, error)
+	// ============================================================================
+	// 2. FIND CHILD RESOURCES WITH ROLE BINDINGS BY REVOKED USER/GROUP
+	// ============================================================================
+	// Find all secret groups where the revoked user has role bindings
+	GetSecretGroupsWithUserRoleBindings(ctx context.Context, arg GetSecretGroupsWithUserRoleBindingsParams) ([]SecretGroup, error)
+	// Enhanced RBAC Queries for Hierarchical Access Control
+	// Handles: User + Group access, Parent-child inheritance, Role conflict resolution
+	// Get user's effective role for a specific resource
+	// Considers: Direct user access, Group membership, Parent resource inheritance
+	GetUserEffectiveRole(ctx context.Context, arg GetUserEffectiveRoleParams) (UserRole, error)
 	// GrantRoleBinding: Grants a role to a user or user group on a specific resource
 	// Uses UPSERT semantics to create new role bindings or update existing ones
 	// ON CONFLICT clause ensures idempotent behavior for duplicate role binding attempts
@@ -32,22 +75,48 @@ type Querier interface {
 	// Joins with environments and secret_groups tables to get environment and group details
 	// Filters for environment-level permissions within the specified secret group
 	ListAccessibleEnvironments(ctx context.Context, arg ListAccessibleEnvironmentsParams) ([]ListAccessibleEnvironmentsRow, error)
+	// Enhanced ListAccessibleEnvironments with hierarchical RBAC
+	// secret_group_id: uuid
+	ListAccessibleEnvironmentsEnhanced(ctx context.Context, arg ListAccessibleEnvironmentsEnhancedParams) ([]ListAccessibleEnvironmentsEnhancedRow, error)
 	// ListAccessibleOrganizations: Retrieves all organizations that a user has access to
 	// Joins with organizations table to get organization details along with user's role
 	// Filters for organization-level permissions (no secret_group_id or environment_id)
+	// Includes both direct user permissions and group-based permissions
 	ListAccessibleOrganizations(ctx context.Context, userID uuid.NullUUID) ([]ListAccessibleOrganizationsRow, error)
+	// Enhanced ListAccessibleOrganizations with hierarchical RBAC
+	ListAccessibleOrganizationsEnhanced(ctx context.Context, userID uuid.NullUUID) ([]ListAccessibleOrganizationsEnhancedRow, error)
 	// ListAccessibleSecretGroups: Retrieves all secret groups within an organization that a user has access to
 	// Joins with secret_groups and organizations tables to get group and org details
 	// Filters for secret group-level permissions within the specified organization
 	ListAccessibleSecretGroups(ctx context.Context, arg ListAccessibleSecretGroupsParams) ([]ListAccessibleSecretGroupsRow, error)
+	// Enhanced ListAccessibleSecretGroups with hierarchical RBAC
+	ListAccessibleSecretGroupsEnhanced(ctx context.Context, arg ListAccessibleSecretGroupsEnhancedParams) ([]ListAccessibleSecretGroupsEnhancedRow, error)
+	// List all role bindings for an environment with resolved names (including inherited)
+	ListEnvironmentRoleBindings(ctx context.Context, environmentID uuid.NullUUID) ([]ListEnvironmentRoleBindingsRow, error)
+	// List all role bindings for an organization with resolved names
+	ListOrganizationRoleBindings(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationRoleBindingsRow, error)
+	// List all role bindings for a secret group with resolved names (including inherited)
+	ListSecretGroupRoleBindings(ctx context.Context, secretGroupID uuid.NullUUID) ([]ListSecretGroupRoleBindingsRow, error)
 	// RevokeRoleBinding: Removes a role binding for a user or user group on a specific resource
 	// Uses conditional logic to handle both user-based and group-based role bindings
 	// Returns the number of affected rows to determine if the role binding existed
 	// No error if role binding doesn't exist (idempotent operation)
 	RevokeRoleBinding(ctx context.Context, arg RevokeRoleBindingParams) (sql.Result, error)
+	// Transfer ownership of an environment by updating the role binding
+	TransferEnvironmentRoleBindingOwnership(ctx context.Context, arg TransferEnvironmentRoleBindingOwnershipParams) error
+	// ============================================================================
+	// 3. TRANSFER OWNERSHIP BY UPDATING ROLE BINDINGS
+	// ============================================================================
+	// Transfer ownership of a secret group by updating the role binding
+	TransferSecretGroupRoleBindingOwnership(ctx context.Context, arg TransferSecretGroupRoleBindingOwnershipParams) error
 	// UpdateUserRole: Updates the role level for an existing role binding
 	// Changes the role while preserving the binding relationship and updating the timestamp
 	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error
+	// ============================================================================
+	// 6. VALIDATION QUERIES
+	// ============================================================================
+	// Validate that a resource exists and has an owner
+	ValidateResourceOwnership(ctx context.Context, arg ValidateResourceOwnershipParams) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

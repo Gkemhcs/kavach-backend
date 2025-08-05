@@ -19,6 +19,7 @@ type ListAccessibleSecretGroupsRow struct {
 	SecretGroupName  string `json:"name"`
 	OrganizationName string `json:"organization_name"`
 	Role             string `json:"role"`
+	InheritedFrom    string `json:"inherited_from"`
 }
 
 // UpdateSecretGroupRequest is the request body for updating a secret group.

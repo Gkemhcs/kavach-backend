@@ -39,6 +39,36 @@ func (drh *DomainRouteHandler) HandleDomainRoute(c *gin.Context, userID string) 
 		return nil
 	}
 
+	// Handle role-bindings routes - require view_policies permission on the parent resource
+	if strings.Contains(path, "/role-bindings") {
+		// Extract the parent resource path by removing /role-bindings
+		// e.g., /organizations/123/role-bindings -> /organizations/123
+		// e.g., /organizations/123/secret-groups/456/role-bindings -> /organizations/123/secret-groups/456
+		resource := strings.TrimSuffix(path, "/role-bindings")
+
+		hasPermission, explanations, err := drh.enforcer.CheckPermissionEx(userID, "view_policies", resource)
+		if err != nil {
+			logEntry.WithFields(logrus.Fields{
+				"error":      "permission_check_failed",
+				"permission": "view_policies",
+				"resource":   resource,
+			}).Error("Failed to check view_policies permission")
+			return fmt.Errorf("failed to check view_policies permission: %v", err)
+		}
+
+		if !hasPermission {
+			logEntry.WithFields(logrus.Fields{
+				"permission": "view_policies",
+				"resource":   resource,
+				"result":     "denied",
+				"reason":     explanations,
+			}).Warn("User does not have view_policies permission")
+			return fmt.Errorf("user %s does not have view_policies permission on %s", userID, resource)
+		}
+
+		return nil
+	}
+
 	// Determine action based on HTTP method
 	action := drh.getActionFromMethod(c.Request.Method)
 

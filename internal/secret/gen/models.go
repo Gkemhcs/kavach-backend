@@ -146,6 +146,17 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 	return string(ns.UserRole), nil
 }
 
+type CasbinRule struct {
+	ID    int32          `json:"id"`
+	Ptype string         `json:"ptype"`
+	V0    sql.NullString `json:"v0"`
+	V1    sql.NullString `json:"v1"`
+	V2    sql.NullString `json:"v2"`
+	V3    sql.NullString `json:"v3"`
+	V4    sql.NullString `json:"v4"`
+	V5    sql.NullString `json:"v5"`
+}
+
 type Environment struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`

@@ -51,6 +51,9 @@ func RegisterSecretGroupRoutes(handler *SecretGroupHandler,
 		secretGroup.GET(":groupID", handler.Get)
 		secretGroup.PATCH(":groupID", handler.Update)
 		secretGroup.DELETE(":groupID", handler.Delete)
+
+		// Role bindings routes
+		secretGroup.GET("/:groupID/role-bindings", handler.ListSecretGroupRoleBindings)
 	}
 
 	environment.RegisterEnvironmentRoutes(environmentHandler, secretHandler, providerHandler, secretGroup, jwtMiddleware)
@@ -74,6 +77,7 @@ func ToSecretGroupRowResponse(secretgroup iam_db.ListAccessibleSecretGroupsRow) 
 		SecretGroupName:  secretgroup.Name,
 		OrganizationName: secretgroup.OrganizationName,
 		Role:             string(secretgroup.Role),
+		InheritedFrom:    secretgroup.InheritedFrom,
 	}
 }
 
@@ -223,4 +227,45 @@ func (h *SecretGroupHandler) Delete(c *gin.Context) {
 		return
 	}
 	utils.RespondSuccess(c, http.StatusOK, gin.H{"message": "secret group deleted"})
+}
+
+// ListSecretGroupRoleBindings handles GET /organizations/:orgID/secret-groups/:groupID/role-bindings
+// Lists all role bindings for a secret group with resolved user and group names.
+func (h *SecretGroupHandler) ListSecretGroupRoleBindings(c *gin.Context) {
+	orgID := c.Param("orgID")
+	groupID := c.Param("groupID")
+	if orgID == "" || groupID == "" {
+		h.logger.Warn("List secret group role bindings failed: missing organization ID or group ID")
+		utils.RespondError(c, http.StatusBadRequest, "missing_parameters", "organization ID and group ID are required")
+		return
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"orgID":   orgID,
+		"groupID": groupID,
+	}).Info("Listing secret group role bindings")
+
+	bindings, err := h.service.ListSecretGroupRoleBindings(c.Request.Context(), orgID, groupID)
+	if err != nil {
+		h.logger.WithFields(logrus.Fields{
+			"orgID":   orgID,
+			"groupID": groupID,
+			"error":   err.Error(),
+		}).Error("Failed to list secret group role bindings")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_server_error", "failed to list secret group role bindings")
+		return
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"orgID":        orgID,
+		"groupID":      groupID,
+		"bindingCount": len(bindings),
+	}).Info("Successfully listed secret group role bindings")
+
+	utils.RespondSuccess(c, http.StatusOK, gin.H{
+		"organization_id": orgID,
+		"secret_group_id": groupID,
+		"bindings":        bindings,
+		"count":           len(bindings),
+	})
 }

@@ -128,18 +128,67 @@ func (q *Queries) GetRoleBinding(ctx context.Context, arg GetRoleBindingParams) 
 }
 
 const listAccessibleEnvironments = `-- name: ListAccessibleEnvironments :many
-SELECT 
-  rb.environment_id AS id,
-  e.name,
-  sg.name AS secret_group_name,
-  rb.role AS role        
-FROM role_bindings AS rb 
-INNER JOIN environments AS e ON rb.environment_id = e.id
-INNER JOIN secret_groups AS sg ON rb.secret_group_id = sg.id
-WHERE 
-  rb.user_id = $1 
-  AND rb.organization_id = $2
-  AND rb.secret_group_id = $3
+WITH user_env_access AS (
+    -- Direct environment access
+    SELECT 
+        rb.environment_id AS id,
+        e.name,
+        sg.name AS secret_group_name,
+        rb.role AS role,
+        'environment' as inherited_from
+    FROM role_bindings AS rb
+    INNER JOIN environments AS e ON rb.environment_id = e.id
+    INNER JOIN secret_groups AS sg ON rb.secret_group_id = sg.id
+    WHERE 
+        rb.user_id = $1 
+        AND rb.organization_id = $2
+        AND rb.secret_group_id = $3
+),
+user_org_access AS (
+    -- Organization-level access
+    SELECT 
+        e.id,
+        e.name,
+        sg.name AS secret_group_name,
+        rb.role AS role,
+        'organization' as inherited_from
+    FROM role_bindings AS rb
+    INNER JOIN secret_groups AS sg ON rb.organization_id = sg.organization_id
+    INNER JOIN environments AS e ON e.secret_group_id = sg.id
+    WHERE 
+        rb.user_id = $1 
+        AND rb.organization_id = $2
+        AND rb.resource_type = 'organization'
+        AND rb.secret_group_id IS NULL
+        AND rb.environment_id IS NULL
+        AND sg.id = $3
+),
+user_sg_access AS (
+    -- Secret group-level access
+    SELECT 
+        e.id,
+        e.name,
+        sg.name AS secret_group_name,
+        rb.role AS role,
+        'secret_group' as inherited_from
+    FROM role_bindings AS rb
+    INNER JOIN secret_groups AS sg ON rb.secret_group_id = sg.id
+    INNER JOIN environments AS e ON e.secret_group_id = sg.id
+    WHERE 
+        rb.user_id = $1 
+        AND rb.organization_id = $2
+        AND rb.resource_type = 'secret_group'
+        AND rb.secret_group_id = $3
+        AND rb.environment_id IS NULL
+)
+SELECT id, name, secret_group_name, role, inherited_from FROM user_env_access
+UNION ALL
+SELECT id, name, secret_group_name, role, inherited_from FROM user_sg_access
+WHERE id NOT IN (SELECT id FROM user_env_access)
+UNION ALL
+SELECT id, name, secret_group_name, role, inherited_from FROM user_org_access
+WHERE id NOT IN (SELECT id FROM user_env_access)
+  AND id NOT IN (SELECT id FROM user_sg_access)
 `
 
 type ListAccessibleEnvironmentsParams struct {
@@ -153,6 +202,7 @@ type ListAccessibleEnvironmentsRow struct {
 	Name            string        `json:"name"`
 	SecretGroupName string        `json:"secret_group_name"`
 	Role            UserRole      `json:"role"`
+	InheritedFrom   string        `json:"inherited_from"`
 }
 
 // ListAccessibleEnvironments: Retrieves all environments within a secret group that a user has access to
@@ -172,6 +222,7 @@ func (q *Queries) ListAccessibleEnvironments(ctx context.Context, arg ListAccess
 			&i.Name,
 			&i.SecretGroupName,
 			&i.Role,
+			&i.InheritedFrom,
 		); err != nil {
 			return nil, err
 		}
@@ -187,16 +238,50 @@ func (q *Queries) ListAccessibleEnvironments(ctx context.Context, arg ListAccess
 }
 
 const listAccessibleOrganizations = `-- name: ListAccessibleOrganizations :many
+WITH user_org_roles AS (
+    -- Direct user permissions
+    SELECT 
+        rb.organization_id,
+        rb.role
+    FROM role_bindings AS rb 
+    WHERE rb.user_id = $1 
+      AND rb.resource_type = 'organization'
+      AND rb.environment_id IS NULL 
+      AND rb.secret_group_id IS NULL
+      AND rb.group_id IS NULL
+),
+group_org_roles AS (
+    -- Group-based permissions
+    SELECT 
+        rb.organization_id,
+        rb.role
+    FROM role_bindings AS rb 
+    INNER JOIN user_group_members ugm ON rb.group_id = ugm.user_group_id
+    WHERE ugm.user_id = $1 
+      AND rb.resource_type = 'organization'
+      AND rb.environment_id IS NULL 
+      AND rb.secret_group_id IS NULL
+      AND rb.user_id IS NULL
+),
+combined_org_roles AS (
+    SELECT organization_id, role FROM user_org_roles
+    UNION ALL
+    SELECT organization_id, role FROM group_org_roles
+),
+effective_org_roles AS (
+    SELECT 
+        organization_id,
+        get_highest_role(ARRAY_AGG(role)) as effective_role
+    FROM combined_org_roles
+    GROUP BY organization_id
+)
 SELECT 
-  rb.organization_id AS id,
-  o.name as org_name,
-  rb.role AS role      
-FROM role_bindings AS rb 
-INNER JOIN organizations AS o ON rb.organization_id = o.id
-WHERE 
-  rb.user_id = $1 
-  AND rb.environment_id IS NULL 
-  AND rb.secret_group_id IS NULL
+    eor.organization_id AS id,
+    o.name as org_name,
+    eor.effective_role AS role      
+FROM effective_org_roles eor
+INNER JOIN organizations AS o ON eor.organization_id = o.id
+ORDER BY o.name
 `
 
 type ListAccessibleOrganizationsRow struct {
@@ -208,6 +293,7 @@ type ListAccessibleOrganizationsRow struct {
 // ListAccessibleOrganizations: Retrieves all organizations that a user has access to
 // Joins with organizations table to get organization details along with user's role
 // Filters for organization-level permissions (no secret_group_id or environment_id)
+// Includes both direct user permissions and group-based permissions
 func (q *Queries) ListAccessibleOrganizations(ctx context.Context, userID uuid.NullUUID) ([]ListAccessibleOrganizationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAccessibleOrganizations, userID)
 	if err != nil {
@@ -236,7 +322,8 @@ SELECT
   rb.secret_group_id AS id,
   sg.name as name,
   o.name AS organization_name,
-  rb.role AS role      
+  rb.role AS role,
+  'secret_group' as inherited_from
 FROM role_bindings AS rb 
 INNER JOIN secret_groups AS sg ON rb.secret_group_id = sg.id
 INNER JOIN organizations AS o ON rb.organization_id = o.id
@@ -256,6 +343,7 @@ type ListAccessibleSecretGroupsRow struct {
 	Name             string        `json:"name"`
 	OrganizationName string        `json:"organization_name"`
 	Role             UserRole      `json:"role"`
+	InheritedFrom    string        `json:"inherited_from"`
 }
 
 // ListAccessibleSecretGroups: Retrieves all secret groups within an organization that a user has access to
@@ -275,6 +363,7 @@ func (q *Queries) ListAccessibleSecretGroups(ctx context.Context, arg ListAccess
 			&i.Name,
 			&i.OrganizationName,
 			&i.Role,
+			&i.InheritedFrom,
 		); err != nil {
 			return nil, err
 		}

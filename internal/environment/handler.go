@@ -47,6 +47,9 @@ func RegisterEnvironmentRoutes(handler *EnvironmentHandler,
 		envGroup.GET("/:envID", handler.Get)
 		envGroup.PATCH("/:envID", handler.Update)
 		envGroup.DELETE("/:envID", handler.Delete)
+		
+		// Role bindings routes
+		envGroup.GET("/:envID/role-bindings", handler.ListEnvironmentRoleBindings)
 	}
 }
 
@@ -69,6 +72,7 @@ func ToListAccessibleEnvironmentsRow(env iam_db.ListAccessibleEnvironmentsRow) L
 		Name:            env.Name,
 		SecretGroupName: env.SecretGroupName,
 		Role:            string(env.Role),
+		InheritedFrom:   env.InheritedFrom,
 	}
 }
 
@@ -261,4 +265,50 @@ func (h *EnvironmentHandler) Delete(c *gin.Context) {
 		}
 	}
 	utils.RespondSuccess(c, http.StatusOK, gin.H{"message": "environment deleted"})
+}
+
+// ListEnvironmentRoleBindings handles GET /organizations/:orgID/secret-groups/:groupID/environments/:envID/role-bindings
+// Lists all role bindings for an environment with resolved user and group names.
+func (h *EnvironmentHandler) ListEnvironmentRoleBindings(c *gin.Context) {
+	orgID := c.Param("orgID")
+	groupID := c.Param("groupID")
+	envID := c.Param("envID")
+	if orgID == "" || groupID == "" || envID == "" {
+		h.logger.Warn("List environment role bindings failed: missing parameters")
+		utils.RespondError(c, http.StatusBadRequest, "missing_parameters", "organization ID, group ID, and environment ID are required")
+		return
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"orgID":   orgID,
+		"groupID": groupID,
+		"envID":   envID,
+	}).Info("Listing environment role bindings")
+
+	bindings, err := h.service.ListEnvironmentRoleBindings(c.Request.Context(), orgID, groupID, envID)
+	if err != nil {
+		h.logger.WithFields(logrus.Fields{
+			"orgID":   orgID,
+			"groupID": groupID,
+			"envID":   envID,
+			"error":   err.Error(),
+		}).Error("Failed to list environment role bindings")
+		utils.RespondError(c, http.StatusInternalServerError, "internal_server_error", "failed to list environment role bindings")
+		return
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"orgID":        orgID,
+		"groupID":      groupID,
+		"envID":        envID,
+		"bindingCount": len(bindings),
+	}).Info("Successfully listed environment role bindings")
+
+	utils.RespondSuccess(c, http.StatusOK, gin.H{
+		"organization_id": orgID,
+		"secret_group_id": groupID,
+		"environment_id":  envID,
+		"bindings":        bindings,
+		"count":           len(bindings),
+	})
 }
