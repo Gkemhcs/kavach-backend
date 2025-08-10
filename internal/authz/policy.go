@@ -12,7 +12,7 @@ func LoadDefaultPolicies(logger *logrus.Logger, enforcer *casbin.Enforcer) {
 
 	// Define role-action mappings
 	roleActions := map[string][]string{
-		"owner":  {"read", "create", "grant", "revoke", "delete", "update", "view_provider_config", "manage_provider_config","view_policies"},
+		"owner":  {"read", "create", "grant", "revoke", "delete", "update", "view_provider_config", "manage_provider_config", "view_policies"},
 		"admin":  {"read", "create", "grant", "revoke", "update", "view_provider_config", "manage_provider_config", "view_policies"},
 		"editor": {"read", "create", "update", "sync", "view_provider_config"},
 		"viewer": {"read"},

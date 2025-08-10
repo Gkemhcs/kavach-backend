@@ -23,8 +23,8 @@ infra/.terraform/
 *.bak
 *.swp
 .DS_Store
-
-
+setup_github_secrets.sh
+terraform.tfvars
 
 # Code coverage profiles and other test artifacts
 *.out

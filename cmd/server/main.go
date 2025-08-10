@@ -114,8 +114,8 @@ func main() {
 	environmentService := environment.NewEnvironmentService(environmentdb.New(dbConn), logger, *iamService, authzEnforcer)
 	environmentHandler := environment.NewEnvironmentHandler(environmentService, logger)
 
-	// Create the HTTP server
-	s := server.New(cfg, logger)
+	// Create the HTTP server with database connection
+	s := server.New(cfg, logger, dbConn)
 
 	authzMiddleware := middleware.NewAuthMiddleware(authzEnforcer, logger)
 

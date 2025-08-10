@@ -1,9 +1,12 @@
 # =============================================================================
-# GLOBAL CONFIGURATION
+# NON-SENSITIVE VARIABLES FOR CI/CD
+# This file contains only non-sensitive configuration values
+# Sensitive values are passed via GitHub secrets in the CI/CD pipeline
 # =============================================================================
 
-# REQUIRED: Set your GCP project ID
-project_id = "taskpilot-backend-project"
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
 
 # Environment configuration
 environment = "dev"         # Options: dev, staging, prod
@@ -47,14 +50,11 @@ db_maintenance_window = {
 db_authorized_networks = []
 
 # =============================================================================
-# CLOUD RUN CONFIGURATION (commented out for now)
+# CLOUD RUN CONFIGURATION
 # =============================================================================
 
 # Service settings
 cloud_run_service_name = "kavach-backend"
-
-# REQUIRED: Set your container image URL
-cloud_run_image_url = "asia-south1-docker.pkg.dev/taskpilot-backend-project/kavach-artifact-repo-dev/kavach-backend:v3"
 
 # Resource allocation (optimized for cost)
 cloud_run_cpu    = "1000m" # 1 CPU
@@ -67,38 +67,34 @@ cloud_run_concurrency     = 80 # Concurrent requests per instance
 cloud_run_timeout_seconds = 300
 
 # Environment variables for Cloud Run
-# cloud_run_env_vars = {
-#   NODE_ENV    = "production"
-#   LOG_LEVEL   = "info"
-#   API_VERSION = "v1"
-# }
+cloud_run_env_vars = {
+  APP_ENV     = "production"
+  LOG_LEVEL   = "info"
+  API_VERSION = "v1"
+}
 
 # Secret environment variables (will be populated from Secret Manager)
-# cloud_run_secrets = []
+cloud_run_secrets = []
 
 # =============================================================================
-# LOAD BALANCER CONFIGURATION (commented out for now)
+# LOAD BALANCER CONFIGURATION
 # =============================================================================
 
 # Load balancer settings
 load_balancer_name   = "kavach-lb"
 ssl_certificate_name = "kavach-ssl-cert"
 
-# Domain configuration (set your domain for production)
-domain_name   = "kavach.gkem.cloud." # REQUIRED: Your domain name
-dns_zone_name = "gkem-cloud-domain"  # REQUIRED: Name of your existing DNS zone
-enable_ssl    = true                 # Enable SSL certificate
+# SSL configuration
+enable_ssl = true # Enable SSL certificate
 
 # =============================================================================
-# CLOUD ARMOR SECURITY (commented out for now)
+# CLOUD ARMOR SECURITY
 # =============================================================================
 
 # Security policy
 cloud_armor_policy_name = "kavach-armor-policy"
 
 # Basic security rules (customize based on your needs)
-# Note: Rate limiting rules are now configured in the Cloud Armor module
-# with simulation settings for testing
 cloud_armor_rules = []
 
 # =============================================================================
@@ -115,25 +111,10 @@ artifact_description     = "Kavach application container images"
 # =============================================================================
 
 # Plain environment variables (non-sensitive)
-# Note: Database variables (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD) 
-# are automatically handled by the PostgreSQL module and Secret Manager
 app_env_vars = {
-  APP_ENV     = "development"
-  LOG_LEVEL   = "debug"
+  APP_ENV     = "production"
+  LOG_LEVEL   = "info"
   API_VERSION = "v1"
-}
-
-# =============================================================================
-# SECRET MANAGER CONFIGURATION
-# =============================================================================
-
-# Sensitive environment variables from .env file
-app_secrets = {
-  JWT_ACCESS_TOKEN_SECRET  = "ii2ir2hi2irhirhihi"
-  JWT_REFRESH_TOKEN_SECRET = "3jr3orj3ororooojo"
-  GITHUB_CLIENT_SECRET     = "1923b5b5819ea865611d022fe939b2161547b79b"
-  GITHUB_CLIENT_ID         = "Ov23liTQd2sTs4yFbcaH"
-  GITHUB_CALLBACK_URL      = "http://kavach.gkem.cloud/api/v1/auth/github/callback"
 }
 
 # =============================================================================
@@ -142,25 +123,3 @@ app_secrets = {
 
 # Service account settings
 service_account_name = "kavach-sa"
-
-# =============================================================================
-# ENVIRONMENT-SPECIFIC OVERRIDES
-# =============================================================================
-
-# Uncomment and modify these sections for different environments
-
-# For staging environment:
-# environment = "staging"
-# db_machine_type = "db-g1-small"
-# db_disk_size_gb = 20
-# cloud_run_max_instances = 10
-# cloud_run_min_instances = 1
-
-# For production environment:
-# environment = "prod"
-# db_machine_type = "db-custom-1-3840"  # 1 vCPU, 3.75 GB RAM
-# db_disk_size_gb = 50
-# cloud_run_max_instances = 20
-# cloud_run_min_instances = 2
-# enable_ssl = true
-# domain_name = "api.yourdomain.com" 

@@ -26,6 +26,11 @@ type Config struct {
 	ModelFilePath         string
 	SecretEncryptionKey   string
 	ProviderEncryptionKey string
+	// Database connection pooling configuration
+	DBMaxOpenConns    int // Maximum number of open connections to the database
+	DBMaxIdleConns    int // Maximum number of idle connections in the pool
+	DBConnMaxLifetime int // Maximum amount of time a connection may be reused (in minutes)
+	DBConnMaxIdleTime int // Maximum amount of time an idle connection may be reused (in minutes)
 }
 
 // Load reads configuration from the .env file and environment variables, returning a Config struct.
@@ -48,6 +53,11 @@ func Load() (*Config, error) {
 	viper.SetDefault("MODEL_FILE_PATH", "internal/authz/model.conf")
 	viper.SetDefault("ENCRYPTION_KEY", "RhK7KoKSwOuFOHxONMNaO9Z9pDgJKwZjaNhcbgZ7Qqc=")
 	viper.SetDefault("GITHUB_REDIRECT_URL", "http://localhost:8080/api/v1/auth/github/callback")
+	// Database connection pooling defaults
+	viper.SetDefault("DB_MAX_OPEN_CONNS", 25)    // Maximum open connections
+	viper.SetDefault("DB_MAX_IDLE_CONNS", 5)     // Maximum idle connections
+	viper.SetDefault("DB_CONN_MAX_LIFETIME", 5)  // Connection max lifetime in minutes
+	viper.SetDefault("DB_CONN_MAX_IDLE_TIME", 5) // Connection max idle time in minutes
 
 	// Try to read .env file, but don't fail if it doesn't exist
 	if err := viper.ReadInConfig(); err != nil {
@@ -73,6 +83,11 @@ func Load() (*Config, error) {
 		ModelFilePath:         viper.GetString("MODEL_FILE_PATH"),
 		SecretEncryptionKey:   viper.GetString("ENCRYPTION_KEY"),
 		ProviderEncryptionKey: viper.GetString("ENCRYPTION_KEY"),
+		// Database connection pooling configuration
+		DBMaxOpenConns:    viper.GetInt("DB_MAX_OPEN_CONNS"),
+		DBMaxIdleConns:    viper.GetInt("DB_MAX_IDLE_CONNS"),
+		DBConnMaxLifetime: viper.GetInt("DB_CONN_MAX_LIFETIME"),
+		DBConnMaxIdleTime: viper.GetInt("DB_CONN_MAX_IDLE_TIME"),
 	}
 
 	// Validate configuration for production environment

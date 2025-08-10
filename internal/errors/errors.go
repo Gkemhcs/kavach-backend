@@ -77,6 +77,13 @@ var (
 	ErrGCPInvalidLocation                 = NewAPIError("gcp_invalid_location", "❌ GCP Secret Manager location specified in config is invalid or not supported", http.StatusBadRequest)
 	ErrProviderCredentialValidationFailed = NewAPIError("provider_credential_validation_failed", "❌ Provider credential validation failed. Please check your credentials", http.StatusBadRequest)
 	ErrGitHubEncryptionFailed             = NewAPIError("github_encryption_failed", "❌ Failed to encrypt secret for GitHub. Please try again", http.StatusInternalServerError)
+
+	// Role binding listing errors
+	ErrNoRoleBindingsFound             = NewAPIError("no_role_bindings_found", "No role bindings found for this resource", http.StatusNotFound)
+	ErrRoleBindingsListFailed          = NewAPIError("role_bindings_list_failed", "Failed to list role bindings", http.StatusInternalServerError)
+	ErrInvalidResourceID               = NewAPIError("invalid_resource_id", "Invalid resource ID provided", http.StatusBadRequest)
+	ErrPermissionDeniedForRoleBindings = NewAPIError("permission_denied_role_bindings", "You don't have permission to view role bindings for this resource", http.StatusForbidden)
+	ErrResourceNotFoundForRoleBindings = NewAPIError("resource_not_found_role_bindings", "Resource not found when listing role bindings", http.StatusNotFound)
 )
 
 // IsUniqueViolation checks for unique constraint violation (Postgres).

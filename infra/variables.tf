@@ -264,26 +264,26 @@ variable "artifact_description" {
 variable "app_env_vars" {
   description = "Map of plain environment variable names and values"
   type        = map(string)
-  default     = {
+  default = {
     NODE_ENV    = "production"
     LOG_LEVEL   = "info"
     API_VERSION = "v1"
   }
-  sensitive   = false
+  sensitive = false
 }
 
 # Secret Manager Variables
 variable "app_secrets" {
   description = "Map of sensitive environment variable names and values"
   type        = map(string)
-  default     = {
-    JWT_SECRET      = ""
-    DB_PASSWORD     = ""
-    ENCRYPTION_KEY  = ""
-    API_KEY         = ""
-    REDIS_PASSWORD  = ""
+  default = {
+    JWT_SECRET     = ""
+    DB_PASSWORD    = ""
+    ENCRYPTION_KEY = ""
+    API_KEY        = ""
+    REDIS_PASSWORD = ""
   }
-  sensitive   = false
+  sensitive = false
 }
 
 # IAM Variables

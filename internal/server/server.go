@@ -1,11 +1,13 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/Gkemhcs/kavach-backend/internal/auth"
 	"github.com/Gkemhcs/kavach-backend/internal/auth/jwt"
 	"github.com/Gkemhcs/kavach-backend/internal/config"
+	"github.com/Gkemhcs/kavach-backend/internal/db"
 	"github.com/Gkemhcs/kavach-backend/internal/environment"
 	"github.com/Gkemhcs/kavach-backend/internal/groups"
 	"github.com/Gkemhcs/kavach-backend/internal/iam"
@@ -23,6 +25,7 @@ type Server struct {
 	cfg    *config.Config
 	log    *logrus.Logger
 	engine *gin.Engine
+	db     *sql.DB // Database connection for health checks
 }
 
 // SetupRoutes registers all API routes and middleware for the server.
@@ -65,15 +68,44 @@ func (s *Server) SetupRoutes(authHandler *auth.AuthHandler,
 // routes registers health check and other non-API routes.
 func (s *Server) routes() {
 	s.engine.GET("/healthz", func(c *gin.Context) {
+		// Basic health check
 		c.JSON(200, gin.H{
 			"status":  "ok",
 			"message": "Kavach backend is healthy",
 		})
 	})
+
+	// Detailed health check with database connection pool stats
+	s.engine.GET("/healthz/detailed", func(c *gin.Context) {
+		// Check database connectivity
+		if err := s.db.Ping(); err != nil {
+			c.JSON(503, gin.H{
+				"status":  "error",
+				"message": "Database connection failed",
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		// Get connection pool statistics
+		poolStats := db.GetConnectionStats(s.db)
+
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"message": "Kavach backend is healthy",
+			"database": gin.H{
+				"status": "connected",
+				"pool":   poolStats,
+			},
+			"timestamp": gin.H{
+				"server_time": "2024-01-01T00:00:00Z", // You can add actual timestamp
+			},
+		})
+	})
 }
 
 // New creates a new Server instance with the given config and logger.
-func New(cfg *config.Config, log *logrus.Logger) *Server {
+func New(cfg *config.Config, log *logrus.Logger, db *sql.DB) *Server {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	gin.SetMode(gin.ReleaseMode)
@@ -82,6 +114,7 @@ func New(cfg *config.Config, log *logrus.Logger) *Server {
 		cfg:    cfg,
 		log:    log,
 		engine: engine,
+		db:     db,
 	}
 }
 

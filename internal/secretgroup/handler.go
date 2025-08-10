@@ -252,6 +252,39 @@ func (h *SecretGroupHandler) ListSecretGroupRoleBindings(c *gin.Context) {
 			"groupID": groupID,
 			"error":   err.Error(),
 		}).Error("Failed to list secret group role bindings")
+
+		// Handle specific error types
+		if err == apiErrors.ErrOrganizationNotFound {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == apiErrors.ErrSecretGroupNotFound {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == apiErrors.ErrPermissionDeniedForRoleBindings {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == apiErrors.ErrNoRoleBindingsFound {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == apiErrors.ErrInvalidResourceID {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		// Default error
 		utils.RespondError(c, http.StatusInternalServerError, "internal_server_error", "failed to list secret group role bindings")
 		return
 	}

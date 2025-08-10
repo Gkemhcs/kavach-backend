@@ -18,6 +18,7 @@ jobs:
   deploy:
     name: 'Deploy Infrastructure'
     runs-on: ubuntu-latest
+    environment: kavach-gcp-dev  # Specify the environment to use
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,8 +26,8 @@ jobs:
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -38,6 +39,39 @@ jobs:
         with:
           project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
 
+      - name: Prepare Terraform Variables
+        run: |
+          cd infra
+          # Copy non-sensitive variables
+          cp terraform.tfvars.ci terraform.tfvars
+          
+          # Add project_id from environment
+          echo "project_id = \"${{ env.GOOGLE_CLOUD_PROJECT }}\"" >> terraform.tfvars
+          
+          # Add sensitive variables from GitHub environment secrets
+          cat >> terraform.tfvars << 'EOF'
+          
+          # =============================================================================
+          # SENSITIVE VARIABLES FROM GITHUB ENVIRONMENT SECRETS
+          # =============================================================================
+          
+          # Container image URL
+          cloud_run_image_url = "asia-south1-docker.pkg.dev/${{ env.GOOGLE_CLOUD_PROJECT }}/kavach-artifact-repo-dev/kavach-backend:v3"
+          
+          # Domain configuration
+          domain_name   = "${{ vars.TF_DOMAIN_NAME }}"
+          dns_zone_name = "${{ vars.TF_DNS_ZONE_NAME }}"
+          
+          # Application secrets
+          app_secrets = {
+            JWT_ACCESS_TOKEN_SECRET  = "${{ secrets.TF_JWT_ACCESS_TOKEN_SECRET }}"
+            JWT_REFRESH_TOKEN_SECRET = "${{ secrets.TF_JWT_REFRESH_TOKEN_SECRET }}"
+            GITHUB_CLIENT_SECRET     = "${{ secrets.TF_GITHUB_CLIENT_SECRET }}"
+            GITHUB_CLIENT_ID         = "${{ secrets.TF_GITHUB_CLIENT_ID }}"
+            GITHUB_CALLBACK_URL      = "${{ secrets.TF_GITHUB_CALLBACK_URL }}"
+          }
+          EOF
+
       - name: Terraform Init
         run: |
           cd infra
@@ -45,26 +79,44 @@ jobs:
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
             -backend-config="prefix=terraform/state"
 
-      - name: Terraform Plan & Apply
+      - name: Terraform Plan
         run: |
           cd infra
           terraform plan -out=tfplan
-          terraform apply tfplan
+          echo "## 📋 Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Terraform plan completed successfully. Review the plan above before applying." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the plan output above" >> $GITHUB_STEP_SUMMARY
+          echo "2. If changes look good, manually run: `terraform apply tfplan`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Or enable auto-apply by modifying this workflow" >> $GITHUB_STEP_SUMMARY
 
-      - name: Get Deployment URL
-        id: outputs
-        run: |
-          cd infra
-          echo "url=$(terraform output -raw cloud_run_url 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: infra/tfplan
+          retention-days: 30
 
       - name: Deployment Summary
         run: |
-          echo "## 🚀 Infrastructure Deployed Successfully"
+          echo "## 🔍 Infrastructure Plan Completed"
           echo ""
-          echo "**Deployment URL:** ${{ steps.outputs.outputs.url }}"
+          echo "**Status:** ✅ Plan completed successfully"
           echo "**Project:** ${{ env.GOOGLE_CLOUD_PROJECT }}"
+          echo "**Environment:** production"
           echo "**Commit:** ${{ github.sha }}"
+          echo ""
+          echo "### 📋 What Happened:"
+          echo "- Terraform plan was generated and saved as artifact"
+          echo "- No infrastructure changes were applied"
+          echo "- Review the plan output above before proceeding"
           echo ""
           echo "### 🔗 Links:"
           echo "- [Cloud Console](https://console.cloud.google.com/run?project=${{ env.GOOGLE_CLOUD_PROJECT }})"
-          echo "- [Terraform State](https://console.cloud.google.com/storage/browser/${{ secrets.TF_STATE_BUCKET }})" 
+          echo "- [Terraform State](https://console.cloud.google.com/storage/browser/${{ secrets.TF_STATE_BUCKET }})"
+          echo ""
+          echo "### 🚀 To Apply Changes:"
+          echo "1. Review the plan output carefully"
+          echo "2. If satisfied, manually run: `terraform apply tfplan`"
+          echo "3. Or modify this workflow to enable auto-apply" 

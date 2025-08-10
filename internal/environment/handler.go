@@ -47,7 +47,7 @@ func RegisterEnvironmentRoutes(handler *EnvironmentHandler,
 		envGroup.GET("/:envID", handler.Get)
 		envGroup.PATCH("/:envID", handler.Update)
 		envGroup.DELETE("/:envID", handler.Delete)
-		
+
 		// Role bindings routes
 		envGroup.GET("/:envID/role-bindings", handler.ListEnvironmentRoleBindings)
 	}
@@ -293,6 +293,45 @@ func (h *EnvironmentHandler) ListEnvironmentRoleBindings(c *gin.Context) {
 			"envID":   envID,
 			"error":   err.Error(),
 		}).Error("Failed to list environment role bindings")
+
+		// Handle specific error types
+		if err == appErrors.ErrOrganizationNotFound {
+			apiErr := err.(*appErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == appErrors.ErrSecretGroupNotFound {
+			apiErr := err.(*appErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == appErrors.ErrEnvironmentNotFound {
+			apiErr := err.(*appErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == appErrors.ErrPermissionDeniedForRoleBindings {
+			apiErr := err.(*appErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == appErrors.ErrNoRoleBindingsFound {
+			apiErr := err.(*appErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == appErrors.ErrInvalidResourceID {
+			apiErr := err.(*appErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		// Default error
 		utils.RespondError(c, http.StatusInternalServerError, "internal_server_error", "failed to list environment role bindings")
 		return
 	}

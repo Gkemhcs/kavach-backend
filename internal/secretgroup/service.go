@@ -218,14 +218,40 @@ func (s *SecretGroupService) ListSecretGroupRoleBindings(ctx context.Context, or
 		"groupID": groupID,
 	}).Info("Listing secret group role bindings")
 
-	// Parse the group ID
+	// Validate organization ID format
+	_, err := uuid.Parse(orgID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID": orgID,
+			"error": err.Error(),
+		}).Error("Invalid organization ID format")
+		return nil, appErrors.ErrInvalidResourceID
+	}
+
+	// Validate group ID format
 	groupUUID, err := uuid.Parse(groupID)
 	if err != nil {
 		s.logger.WithFields(logrus.Fields{
 			"groupID": groupID,
 			"error":   err.Error(),
-		}).Error("Failed to parse group ID")
-		return nil, err
+		}).Error("Invalid group ID format")
+		return nil, appErrors.ErrInvalidResourceID
+	}
+
+	// Check if secret group exists
+	_, err = s.repo.GetSecretGroupByID(ctx, groupUUID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.WithFields(logrus.Fields{
+				"groupID": groupID,
+			}).Error("Secret group not found")
+			return nil, appErrors.ErrSecretGroupNotFound
+		}
+		s.logger.WithFields(logrus.Fields{
+			"groupID": groupID,
+			"error":   err.Error(),
+		}).Error("Failed to get secret group")
+		return nil, appErrors.ErrInternalServer
 	}
 
 	bindings, err := s.iamService.ListSecretGroupRoleBindings(ctx, groupUUID)
@@ -235,7 +261,16 @@ func (s *SecretGroupService) ListSecretGroupRoleBindings(ctx context.Context, or
 			"groupID": groupID,
 			"error":   err.Error(),
 		}).Error("Failed to list secret group role bindings")
-		return nil, err
+		return nil, appErrors.ErrRoleBindingsListFailed
+	}
+
+	// Check if no bindings found
+	if len(bindings) == 0 {
+		s.logger.WithFields(logrus.Fields{
+			"orgID":   orgID,
+			"groupID": groupID,
+		}).Info("No role bindings found for secret group")
+		return nil, appErrors.ErrNoRoleBindingsFound
 	}
 
 	s.logger.WithFields(logrus.Fields{

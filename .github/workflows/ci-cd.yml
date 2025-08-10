@@ -4,13 +4,29 @@ on:
   push:
     branches:
       - main
+      - develop
     paths-ignore:
       - 'infra/**'
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/infrastructure.yml'
+
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - 'infra/**'
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/infrastructure.yml'
 
 env:
-  REGISTRY: us-docker.pkg.dev
-  IMAGE_NAME: kavach-backend
   GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+  REGISTRY: asia-south1-docker.pkg.dev
+  IMAGE_NAME: kavach-backend
+  ARTIFACT_REPO_NAME: kavach-artifact-repo-dev
+  REGION: asia-south1
 
 permissions:
   contents: read
@@ -42,10 +58,12 @@ jobs:
         run: |
           go test -v ./...
 
-  build:
-    name: 'Build and Deploy'
-    runs-on: ubuntu-latest
+  build-and-push:
+    name: 'Build and Push Image'
     needs: test
+    runs-on: ubuntu-latest
+    environment: kavach-gcp-dev
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,55 +71,47 @@ jobs:
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
 
-      - name: Configure Docker
+      - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker $REGISTRY --quiet
+          gcloud auth configure-docker ${{ env.REGISTRY }}
 
-      - name: Build and push Docker image
+      - name: Generate Tag
+        id: tag
         run: |
-          IMAGE_TAG="$REGISTRY/$GOOGLE_CLOUD_PROJECT/$IMAGE_NAME:${{ github.sha }}"
-          docker build -t $IMAGE_TAG .
-          docker push $IMAGE_TAG
+          # Generate a 7-character tag from commit SHA
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "Generated tag: $SHORT_SHA"
 
-      - name: Deploy to Cloud Run
+      - name: Build and Push Docker Image
         run: |
-          IMAGE_TAG="$REGISTRY/$GOOGLE_CLOUD_PROJECT/$IMAGE_NAME:${{ github.sha }}"
-          
-          gcloud run deploy kavach-backend \
-            --image="$IMAGE_TAG" \
-            --region=us-central1 \
-            --platform=managed \
-            --allow-unauthenticated \
-            --port=8080 \
-            --memory=1Gi \
-            --cpu=1 \
-            --max-instances=10 \
-            --min-instances=0 \
-            --concurrency=80 \
-            --timeout=300 \
-            --set-env-vars="VERSION=${{ github.sha }}" \
-            --quiet
+          docker build -t ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }} .
+          docker push ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
 
-      - name: Get Deployment URL
-        id: url
+      - name: Build and Push Latest Tag
+        if: github.ref == 'refs/heads/main'
         run: |
-          URL=$(gcloud run services describe kavach-backend --region=us-central1 --format="value(status.url)")
-          echo "url=$URL" >> $GITHUB_OUTPUT
+          docker tag ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }} ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
 
-      - name: Deployment Summary
+      - name: Build Summary
         run: |
-          echo "## 🚀 Application Deployed Successfully"
+          echo "## 🐳 Docker Image Built Successfully"
           echo ""
-          echo "**Deployment URL:** ${{ steps.url.outputs.url }}"
-          echo "**Image Tag:** $REGISTRY/$GOOGLE_CLOUD_PROJECT/$IMAGE_NAME:${{ github.sha }}"
+          echo "**Image:** ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}"
+          echo "**Tag:** ${{ steps.tag.outputs.tag }}"
           echo "**Commit:** ${{ github.sha }}"
+          echo "**Branch:** ${{ github.ref_name }}"
+          echo "**Region:** ${{ env.REGION }}"
           echo ""
           echo "### 🔗 Links:"
-          echo "- [Cloud Run Console](https://console.cloud.google.com/run?project=${{ env.GOOGLE_CLOUD_PROJECT }})"
-          echo "- [Artifact Registry](https://console.cloud.google.com/artifacts?project=${{ env.GOOGLE_CLOUD_PROJECT }})" 
+          echo "- [Artifact Registry](https://console.cloud.google.com/artifacts?project=${{ env.GOOGLE_CLOUD_PROJECT }})"
+          echo "- [Cloud Run](https://console.cloud.google.com/run?project=${{ env.GOOGLE_CLOUD_PROJECT }})" 

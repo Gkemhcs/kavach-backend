@@ -234,6 +234,27 @@ func (h *OrganizationHandler) ListOrganizationRoleBindings(c *gin.Context) {
 			"orgID": orgID,
 			"error": err.Error(),
 		}).Error("Failed to list organization role bindings")
+
+		// Handle specific error types
+		if err == apiErrors.ErrOrganizationNotFound {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == apiErrors.ErrPermissionDeniedForRoleBindings {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		if err == apiErrors.ErrNoRoleBindingsFound {
+			apiErr := err.(*apiErrors.APIError)
+			utils.RespondError(c, apiErr.Status, apiErr.Code, apiErr.Message)
+			return
+		}
+
+		// Default error
 		utils.RespondError(c, http.StatusInternalServerError, "internal_server_error", "failed to list organization role bindings")
 		return
 	}

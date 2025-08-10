@@ -61,8 +61,6 @@ func (m *MockOrgRepository) ListOrgMembers(ctx context.Context, orgID uuid.UUID)
 	return args.Get(0).([]orgdb.OrgMember), args.Error(1)
 }
 
-
-
 // ListOrganizationsByOwner mocks the ListOrganizationsByOwner method
 func (m *MockOrgRepository) ListOrganizationsByOwner(ctx context.Context, ownerID uuid.UUID) ([]orgdb.Organization, error) {
 	args := m.Called(ctx, ownerID)

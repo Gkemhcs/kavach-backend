@@ -3,6 +3,7 @@ package environment
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Gkemhcs/kavach-backend/internal/authz"
@@ -249,14 +250,50 @@ func (s *EnvironmentService) ListEnvironmentRoleBindings(ctx context.Context, or
 		"envID":   envID,
 	}).Info("Listing environment role bindings")
 
-	// Parse the environment ID
+	// Validate organization ID format
+	_, err := uuid.Parse(orgID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"orgID": orgID,
+			"error": err.Error(),
+		}).Error("Invalid organization ID format")
+		return nil, appErrors.ErrInvalidResourceID
+	}
+
+	// Validate group ID format
+	_, err = uuid.Parse(groupID)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{
+			"groupID": groupID,
+			"error":   err.Error(),
+		}).Error("Invalid group ID format")
+		return nil, appErrors.ErrInvalidResourceID
+	}
+
+	// Validate environment ID format
 	envUUID, err := uuid.Parse(envID)
 	if err != nil {
 		s.logger.WithFields(logrus.Fields{
 			"envID": envID,
 			"error": err.Error(),
-		}).Error("Failed to parse environment ID")
-		return nil, err
+		}).Error("Invalid environment ID format")
+		return nil, appErrors.ErrInvalidResourceID
+	}
+
+	// Check if environment exists
+	_, err = s.repo.GetEnvironmentByID(ctx, envUUID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.WithFields(logrus.Fields{
+				"envID": envID,
+			}).Error("Environment not found")
+			return nil, appErrors.ErrEnvironmentNotFound
+		}
+		s.logger.WithFields(logrus.Fields{
+			"envID": envID,
+			"error": err.Error(),
+		}).Error("Failed to get environment")
+		return nil, appErrors.ErrInternalServer
 	}
 
 	bindings, err := s.iamService.ListEnvironmentRoleBindings(ctx, envUUID)
@@ -267,7 +304,17 @@ func (s *EnvironmentService) ListEnvironmentRoleBindings(ctx context.Context, or
 			"envID":   envID,
 			"error":   err.Error(),
 		}).Error("Failed to list environment role bindings")
-		return nil, err
+		return nil, appErrors.ErrRoleBindingsListFailed
+	}
+
+	// Check if no bindings found
+	if len(bindings) == 0 {
+		s.logger.WithFields(logrus.Fields{
+			"orgID":   orgID,
+			"groupID": groupID,
+			"envID":   envID,
+		}).Info("No role bindings found for environment")
+		return nil, appErrors.ErrNoRoleBindingsFound
 	}
 
 	s.logger.WithFields(logrus.Fields{
