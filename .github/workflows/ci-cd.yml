@@ -27,14 +27,46 @@ env:
   IMAGE_NAME: kavach-backend
   ARTIFACT_REPO_NAME: kavach-artifact-repo-dev
   REGION: asia-south1
+  SERVICE: kavach-backend-dev
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  fmt-and-lint:
+    name: 'Format and Lint Code'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Install golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Run go fmt
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Code is not formatted. Please run 'go fmt ./...'"
+            gofmt -s -l .
+            exit 1
+          fi
+          echo "Code is properly formatted"
+
+      - name: Run golangci-lint
+        run: |
+          golangci-lint run --timeout=5m
+
   build-and-push:
     name: 'Build and Push Image'
+    needs: fmt-and-lint
     runs-on: ubuntu-latest
     environment: kavach-gcp-dev
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
@@ -66,15 +98,40 @@ jobs:
           echo "Generated tag: $SHORT_SHA"
 
       - name: Build and Push Docker Image
-        run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }} .
-          docker push ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
 
       - name: Build and Push Latest Tag
         if: github.ref == 'refs/heads/main'
-        run: |
-          docker tag ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }} ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: 'Deploy to Cloud Run'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: '${{ env.SERVICE }}'
+          region: '${{ env.REGION }}'
+          image: '${{ env.REGISTRY }}/${{ env.GOOGLE_CLOUD_PROJECT }}/${{ env.ARTIFACT_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}'
 
       - name: Build Summary
         run: |
