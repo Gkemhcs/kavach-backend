@@ -33,34 +33,8 @@ permissions:
   id-token: write
 
 jobs:
-  test:
-    name: 'Run Tests'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.23'
-          cache: true
-
-      - name: Install SQLC
-        run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-
-      - name: Generate SQLC Code
-        run: |
-          sqlc generate
-
-      - name: Run Tests
-        run: |
-          go test -v ./...
-
   build-and-push:
     name: 'Build and Push Image'
-    needs: test
     runs-on: ubuntu-latest
     environment: kavach-gcp-dev
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'

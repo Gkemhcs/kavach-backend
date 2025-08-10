@@ -18,7 +18,7 @@ jobs:
   deploy:
     name: 'Deploy Infrastructure'
     runs-on: ubuntu-latest
-    environment: kavach-gcp-dev  # Specify the environment to use
+    environment: kavach-gcp-dev  # Use kavach-gcp-dev environment where secrets are configured
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,25 +42,38 @@ jobs:
       - name: Prepare Terraform Variables
         run: |
           cd infra
+          # Remove the old terraform.tfvars file completely
+          rm -f terraform.tfvars
+          
+          # Create a new terraform.tfvars file from scratch
+          cat > terraform.tfvars << 'EOF'
+          # =============================================================================
+          # TERRAFORM VARIABLES FOR CI/CD DEPLOYMENT
+          # This file is generated dynamically during CI/CD
+          # =============================================================================
+          
+          # Copy non-sensitive variables from terraform.tfvars.ci
+          EOF
+          
           # Copy non-sensitive variables
-          cp terraform.tfvars.ci terraform.tfvars
+          cat terraform.tfvars.ci >> terraform.tfvars
           
-          # Add project_id from environment
-          echo "project_id = \"${{ env.GOOGLE_CLOUD_PROJECT }}\"" >> terraform.tfvars
-          
-          # Add sensitive variables from GitHub environment secrets
+          # Add project_id and sensitive variables from GitHub environment secrets
           cat >> terraform.tfvars << 'EOF'
           
           # =============================================================================
           # SENSITIVE VARIABLES FROM GITHUB ENVIRONMENT SECRETS
           # =============================================================================
           
+          # Project ID from environment
+          project_id = "${{ env.GOOGLE_CLOUD_PROJECT }}"
+          
           # Container image URL
           cloud_run_image_url = "asia-south1-docker.pkg.dev/${{ env.GOOGLE_CLOUD_PROJECT }}/kavach-artifact-repo-dev/kavach-backend:v3"
           
           # Domain configuration
-          domain_name   = "${{ vars.TF_DOMAIN_NAME }}"
-          dns_zone_name = "${{ vars.TF_DNS_ZONE_NAME }}"
+          domain_name   = "${{ secrets.TF_DOMAIN_NAME }}"
+          dns_zone_name = "${{ secrets.TF_DNS_ZONE_NAME }}"
           
           # Application secrets
           app_secrets = {
@@ -104,7 +117,7 @@ jobs:
           echo ""
           echo "**Status:** ✅ Plan completed successfully"
           echo "**Project:** ${{ env.GOOGLE_CLOUD_PROJECT }}"
-          echo "**Environment:** production"
+          echo "**Environment:** kavach-gcp-dev"
           echo "**Commit:** ${{ github.sha }}"
           echo ""
           echo "### 📋 What Happened:"

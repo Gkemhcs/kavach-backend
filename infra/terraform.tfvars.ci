@@ -73,9 +73,6 @@ cloud_run_env_vars = {
   API_VERSION = "v1"
 }
 
-# Secret environment variables (will be populated from Secret Manager)
-cloud_run_secrets = []
-
 # =============================================================================
 # LOAD BALANCER CONFIGURATION
 # =============================================================================
@@ -123,3 +120,13 @@ app_env_vars = {
 
 # Service account settings
 service_account_name = "kavach-sa"
+
+# =============================================================================
+# NOTE: SENSITIVE VARIABLES ARE HANDLED IN THE CI/CD PIPELINE
+# =============================================================================
+# The following variables are populated from GitHub secrets:
+# - domain_name
+# - dns_zone_name
+# - app_secrets (JWT tokens, GitHub OAuth, etc.)
+# - cloud_run_image_url
+# =============================================================================
