@@ -109,7 +109,7 @@ artifact_description     = "Kavach application container images"
 
 # Plain environment variables (non-sensitive)
 app_env_vars = {
-  APP_ENV     = "production"
+  APP_ENV     = "development"
   LOG_LEVEL   = "info"
   API_VERSION = "v1"
 }

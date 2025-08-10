@@ -28,6 +28,8 @@ COPY internal/environment/environment_members.sql ./internal/environment/
 COPY internal/environment/environment_members_extended.sql ./internal/environment/
 COPY internal/iam/queries.sql ./internal/iam/
 COPY internal/iam/permissions_management.sql ./internal/iam/
+COPY internal/iam/enhanced_rbac_queries.sql ./internal/iam/
+COPY internal/iam/ownership_transfer_queries.sql ./internal/iam/
 COPY internal/groups/queries.sql ./internal/groups/
 COPY internal/secret/queries.sql ./internal/secret/
 COPY internal/provider/queries.sql ./internal/provider/
